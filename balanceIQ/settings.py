@@ -32,7 +32,7 @@ DEBUG = IS_LOCAL
 if IS_LOCAL:
     ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.108']
 else:
-    ALLOWED_HOSTS = ['ahmadkh511.pythonanywhere.com']
+    ALLOWED_HOSTS = ['wcom.pythonanywhere.com']
 
 
 # ==========================================

@@ -8,26 +8,35 @@ from dotenv import load_dotenv
 # ==========================================
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# تحميل متغيرات البيئة المخفية من ملف .env الموجود في مجلد الجذر
-load_dotenv(BASE_DIR / '.env')
+# ==========================================
+# 2. كشف البيئة تلقائياً (السر هنا!)
+# ==========================================
+# إذا وُجد ملف .env → نحن على الوكل المحلي (MySQL)
+# إذا لم يُوجد → نحن على الاستضافة (SQLite)
+IS_LOCAL = os.path.exists(BASE_DIR / '.env')
+
+if IS_LOCAL:
+    load_dotenv(BASE_DIR / '.env')
 
 
 # ==========================================
-# 2. إعدادات الأمان الأساسية (السرية)
+# 3. إعدادات الأمان الأساسية (السرية)
 # ==========================================
-# المفتاح السري: يقرأه من ملف .env، وإذا لم يجده يستخدم القديم كشبكة أمان لعدم تعطل الموقع محلياً
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-)hu-ahh&uj3$f2+w$f1t08bv!z)9vs3#)5u8h@)sw)rfosizi0')
+# المفتاح السري: يُقرأ من .env محلياً، أو يُستخدم بديل آمن على الاستضافة
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-)hu-ahh&uj3$f2+w$f1t08bv!z)9vs3#)5u8h@)sw)rfosizi0') if IS_LOCAL else 'prod-secret-key-change-me-later-in-env'
 
-# وضع التطوير: True للعمل محلياً، يجب تغييره إلى False عند رفع الموقع على الاستضافة الحقيقية!
-DEBUG = True 
+# وضع التطوير: تلقائي حسب البيئة
+DEBUG = IS_LOCAL  
 
-# المضيفون المسموح لهم: تم حذف ['*'] لأنها ثغرة أمنية قاتلة في الإنتاج
-# أضف هنا عنوان IP الشبكة المحلية إذا كنت تختبر الموقع من جهاز آخر
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.108'] 
+# المضيفون المسموح لهم: تلقائي حسب البيئة
+if IS_LOCAL:
+    ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.108']
+else:
+    ALLOWED_HOSTS = ['ahmadkh511.pythonanywhere.com']
 
 
 # ==========================================
-# 3. التطبيقات المثبتة
+# 4. التطبيقات المثبتة
 # ==========================================
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -41,7 +50,7 @@ INSTALLED_APPS = [
 ]
 
 # ==========================================
-# 4. البرمجيات الوسيطة (Middleware)
+# 5. البرمجيات الوسيطة (Middleware)
 # ==========================================
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -56,7 +65,7 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'balanceIQ.urls'
 
 # ==========================================
-# 5. إعدادات القوالب (Templates)
+# 6. إعدادات القوالب (Templates)
 # ==========================================
 TEMPLATES = [
     {
@@ -80,26 +89,35 @@ WSGI_APPLICATION = 'balanceIQ.wsgi.application'
 
 
 # ==========================================
-# 6. قاعدة البيانات
+# 7. قاعدة البيانات (تلقائي حسب البيئة)
 # ==========================================
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'accounting_db',
-        'USER': 'root',
-        # كلمة المرور تُقرأ من ملف .env، وإذا كانت فارغة محلياً تمر فارغة
-        'PASSWORD': os.getenv('DB_PASSWORD', ''),
-        'HOST': '127.0.0.1',
-        'PORT': '3306',
-        'OPTIONS': {
-            'charset': 'utf8mb4',
+if IS_LOCAL:
+    # ===== وضع الوكل المحلي (MySQL) =====
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': 'accounting_db',
+            'USER': 'root',
+            'PASSWORD': os.getenv('DB_PASSWORD', ''),
+            'HOST': '127.0.0.1',
+            'PORT': '3306',
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+            }
         }
     }
-}
+else:
+    # ===== وضع الاستضافة (SQLite مؤقت) =====
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # ==========================================
-# 7. التحقق من صحة كلمات المرور
+# 8. التحقق من صحة كلمات المرور
 # ==========================================
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
@@ -110,16 +128,16 @@ AUTH_PASSWORD_VALIDATORS = [
 
 
 # ==========================================
-# 8. اللغة والوقت
+# 9. اللغة والوقت
 # ==========================================
-LANGUAGE_CODE = 'ar'  # تم تغييرها للعربية لدعم المتجر العربي
-TIME_ZONE = 'Asia/Amman'  # تم تغييرها لتوقيت بلدك (عدلها حسب دولتك مثل Asia/Riyadh أو Africa/Cairo)
+LANGUAGE_CODE = 'ar'
+TIME_ZONE = 'Asia/Amman'
 USE_I18N = True
 USE_TZ = True
 
 
 # ==========================================
-# 9. الملفات الثابتة (Static) والملفات المرفوعة (Media)
+# 10. الملفات الثابتة (Static) والملفات المرفوعة (Media)
 # ==========================================
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
@@ -130,33 +148,29 @@ MEDIA_ROOT = BASE_DIR / 'media'
 
 
 # ==========================================
-# 10. إعدادات المصادقة وتسجيل الدخول
+# 11. إعدادات المصادقة وتسجيل الدخول
 # ==========================================
 LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'index'
 LOGOUT_REDIRECT_URL = 'accounts:login'
 
-# إعدادات الجلسات (مدة صلاحية تسجيل الدخول)
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False  
-SESSION_COOKIE_AGE = 1209600  # أسبوعان بالثواني
-
-# إعداد مدة صلاحية رابط إعادة تعيين كلمة المرور (24 ساعة)
+SESSION_COOKIE_AGE = 1209600  
 PASSWORD_RESET_TIMEOUT = 86400  
 
-# رابط الموقع الأساسي (مهم لروابط إعادة التعيين)
-SITE_URL = 'http://localhost:8000'  
+# رابط الموقع: تلقائي حسب البيئة
+SITE_URL = 'http://localhost:8000' if IS_LOCAL else 'https://ahmadkh511.pythonanywhere.com'
 
 
 # ==========================================
-# 11. إعدادات الأمان (مهمة جداً للإنتاج)
+# 12. إعدادات الأمان (تلقائي حسب البيئة)
 # ==========================================
-# هذه الإعدادات معطلة (False) للعمل على الوكال هوست محلياً.
-# عند الرفع على الاستضافة (التي تدعم HTTPS)، قم بتغييرها إلى True
-CSRF_COOKIE_SECURE = False  
-SESSION_COOKIE_SECURE = False  
-# SECURE_SSL_REDIRECT = True  
-
-
+if IS_LOCAL:
+    CSRF_COOKIE_SECURE = False  
+    SESSION_COOKIE_SECURE = False  
+else:
+    CSRF_COOKIE_SECURE = True  
+    SESSION_COOKIE_SECURE = True  
 
 
 # ==========================================

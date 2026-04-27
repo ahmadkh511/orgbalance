@@ -1,0 +1,203 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --aqua-1: #e0f7fa; --aqua-2: #b2ebf2; --aqua-3: #4dd0e1; --aqua-4: #0097a7;
+        --text-dark: #006064; --shadow-sm: 0 2px 8px rgba(0, 150, 167, 0.1); --shadow-md: 0 8px 20px rgba(0, 150, 167, 0.15);
+    }
+    .page-header { background: linear-gradient(135deg, var(--aqua-4) 0%, var(--text-dark) 100%); color: white; padding: 25px 30px; border-radius: 16px; margin-bottom: 25px; box-shadow: var(--shadow-md); }
+    .info-card { border: none; border-radius: 16px; box-shadow: var(--shadow-sm); transition: all 0.3s ease; overflow: hidden; margin-bottom: 24px; background: #fff; }
+    .info-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-md); }
+    .info-card .card-header { background: linear-gradient(135deg, var(--aqua-3) 0%, var(--aqua-4) 100%); color: white; font-weight: 600; padding: 14px 20px; border-bottom: none; }
+    .info-card .card-header h5 { margin: 0; font-size: 1.05rem; }
+    .info-card .card-body { padding: 20px; }
+    .form-control, .form-select { border-radius: 8px; border: 1px solid var(--aqua-2); padding: 10px 14px; font-size: 0.95rem; transition: all 0.2s; }
+    .form-control:focus, .form-select:focus { border-color: var(--aqua-4); box-shadow: 0 0 0 3px rgba(0, 151, 167, 0.15); }
+    .form-label { font-weight: 500; color: #495057; margin-bottom: 6px; font-size: 0.9rem; }
+    .form-text { font-size: 0.8rem; color: #6c757d; margin-top: 4px; }
+    .btn-primary { background: linear-gradient(135deg, var(--aqua-4) 0%, var(--text-dark) 100%); border: none; color: white; padding: 10px 24px; border-radius: 8px; font-weight: 500; transition: all 0.2s; }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); color: white; }
+    .btn-outline-secondary { border: 1px solid var(--aqua-3); color: var(--aqua-4); border-radius: 8px; }
+    .btn-outline-secondary:hover { background: var(--aqua-1); border-color: var(--aqua-4); color: var(--text-dark); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h1 class="h4 mb-1"><i class="fas fa-user-edit me-2"></i>{{ title }}</h1>
+            <p class="mb-0 opacity-75">تعديل بيانات: <strong>{{ user_to_edit.get_full_name|default:user_to_edit.username }}</strong></p>
+        </div>
+        <a href="{% url 'accounts:user_list' %}" class="btn btn-light"><i class="fas fa-arrow-right ms-2"></i>العودة للقائمة</a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">{{ message }}<button type="button" class="btn-close" data-bs-dismiss="alert"></button></div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="row">
+            <!-- العمود الأيسر -->
+            <div class="col-lg-4">
+                <div class="info-card">
+                    <div class="card-header"><h5><i class="fas fa-user-cog me-2"></i>بيانات الحساب</h5></div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="{{ form.username.id_for_label }}" class="form-label">{{ form.username.label }}</label>
+                            {{ form.username }}
+                            {% if form.username.errors %}<div class="text-danger small mt-1">{{ form.username.errors }}</div>{% endif %}
+                        </div>
+                        <div class="mb-3">
+                            <label for="{{ form.email.id_for_label }}" class="form-label">{{ form.email.label }}</label>
+                            {{ form.email }}
+                            {% if form.email.errors %}<div class="text-danger small mt-1">{{ form.email.errors }}</div>{% endif %}
+                        </div>
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label for="{{ form.first_name.id_for_label }}" class="form-label">{{ form.first_name.label }}</label>
+                                {{ form.first_name }}
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label for="{{ form.last_name.id_for_label }}" class="form-label">{{ form.last_name.label }}</label>
+                                {{ form.last_name }}
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="mb-3 form-check form-switch">{{ form.is_active }} <label class="form-check-label" for="{{ form.is_active.id_for_label }}">{{ form.is_active.label }}</label></div>
+                        <div class="form-check form-switch">{{ form.is_staff }} <label class="form-check-label" for="{{ form.is_staff.id_for_label }}">{{ form.is_staff.label }}</label></div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="card-header"><h5><i class="fas fa-camera me-2"></i>الصورة الشخصية</h5></div>
+                    <div class="card-body text-center">
+                        <img src="{% if profile.profile_picture %}{{ profile.profile_picture.url }}{% else %}{% static 'images/default_avatar.png' %}{% endif %}" 
+                             alt="صورة الملف الشخصي" id="avatar-preview" class="rounded-circle mb-3" style="width: 120px; height: 120px; object-fit: cover; border: 3px solid var(--aqua-2);">
+                        {{ profile_form.profile_picture }}
+                        <div class="form-text">يُفضل صورة مربعة بحجم لا يتجاوز 2 ميجابايت</div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="card-header"><h5><i class="fas fa-users me-2"></i>نوع المستخدم</h5></div>
+                    <div class="card-body">
+                        <!-- يظهر فقط للادمن بفضل is_admin=True -->
+                        <div class="form-check form-switch mb-3">
+                            {{ profile_form.is_customer }}
+                            <label class="form-check-label" for="{{ profile_form.is_customer.id_for_label }}">
+                                <i class="fas fa-user-check text-success me-1"></i> {{ profile_form.is_customer.label }}
+                            </label>
+                        </div>
+                        <div class="form-check form-switch">
+                            {{ profile_form.is_supplier }}
+                            <label class="form-check-label" for="{{ profile_form.is_supplier.id_for_label }}">
+                                <i class="fas fa-truck text-primary me-1"></i> {{ profile_form.is_supplier.label }}
+                            </label>
+                        </div>
+                        <div class="form-text mt-2">يمكن تفعيل الخيارين معاً.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- العمود الأيمن -->
+            <div class="col-lg-8">
+                <div class="info-card">
+                    <div class="card-header"><h5><i class="fas fa-id-card me-2"></i>المعلومات الأساسية</h5></div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">{{ profile_form.phone_number }}</div>
+                            <div class="col-md-6 mb-3">{{ profile_form.birth_date }}</div>
+                            <div class="col-md-6 mb-3">{{ profile_form.gender }}</div>
+                            <div class="col-md-6 mb-0">{{ profile_form.bio }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="card-header"><h5><i class="fas fa-briefcase me-2"></i>معلومات العمل</h5></div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">{{ profile_form.job_title }}</div>
+                            <div class="col-md-6 mb-3">{{ profile_form.company }}</div>
+                            <div class="col-md-6 mb-3">{{ profile_form.experience_years }}</div>
+                            <div class="col-md-6 mb-3">{{ profile_form.education_level }}</div>
+                            <div class="col-md-6 mb-3">{{ profile_form.university_major }}</div>
+                            <div class="col-md-6 mb-3">{{ profile_form.skills }}</div>
+                            <div class="col-md-6 mb-0">{{ profile_form.languages }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="card-header"><h5><i class="fas fa-map-marker-alt me-2"></i>الاتصال والعنوان</h5></div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                {{ profile_form.website_display }}
+                                <div class="form-text">أدخل اسم الموقع فقط (مثال: google.com)</div>
+                                {% if profile_form.website_display.errors %}<div class="text-danger small mt-1">{{ profile_form.website_display.errors }}</div>{% endif %}
+                            </div>
+                            <div class="col-12 mb-3">{{ profile_form.address }}</div>
+                            <div class="col-md-4 mb-3">{{ profile_form.city }}</div>
+                            <div class="col-md-4 mb-3">{{ profile_form.country }}</div>
+                            <div class="col-md-4 mb-0">{{ profile_form.postal_code }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="card-header"><h5><i class="fas fa-share-alt me-2"></i>التواصل الاجتماعي</h5></div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">{{ profile_form.facebook }}</div>
+                            <div class="col-md-6 mb-3">{{ profile_form.twitter }}</div>
+                            <div class="col-md-6 mb-3">{{ profile_form.instagram }}</div>
+                            <div class="col-md-6 mb-0">{{ profile_form.linkedin }}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-card">
+                    <div class="card-header"><h5><i class="fas fa-cog me-2"></i>الإعدادات</h5></div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6"><div class="form-check form-switch">{{ profile_form.is_public }} <label class="form-check-label" for="{{ profile_form.is_public.id_for_label }}">{{ profile_form.is_public.label }}</label></div></div>
+                            <div class="col-md-6"><div class="form-check form-switch">{{ profile_form.email_notifications }} <label class="form-check-label" for="{{ profile_form.email_notifications.id_for_label }}">{{ profile_form.email_notifications.label }}</label></div></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between mt-3 mb-4">
+                    <button type="submit" class="btn btn-primary btn-lg"><i class="fas fa-save me-2"></i>حفظ جميع التغييرات</button>
+                    <a href="{% url 'accounts:user_list' %}" class="btn btn-outline-secondary btn-lg"><i class="fas fa-times me-2"></i>إلغاء</a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // معاينة الصورة
+    const input = document.querySelector('input[type="file"]');
+    const img = document.getElementById('avatar-preview');
+    if (input && img) {
+        input.addEventListener('change', function(e) {
+            if (this.files && this.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => img.src = e.target.result;
+                reader.readAsDataURL(this.files[0]);
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

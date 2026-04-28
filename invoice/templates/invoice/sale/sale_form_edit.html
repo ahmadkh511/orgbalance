@@ -943,6 +943,8 @@ body {
 </div>
 {% endblock %}
 
+{{ barcodes_data|json_script:"existingBarcodesData" }}
+
 {% block extra_js %}
 <script>
 // ============================================
@@ -957,8 +959,7 @@ window.paidAmountModified = false;
 window.initializationComplete = false;
 window.usedProductIds = new Set();
 
-// بيانات الباركودات الموجودة مسبقاً (للتعديل)
-window.existingBarcodes = {{ barcodes_data|safe }};
+window.existingBarcodes = JSON.parse(document.getElementById('existingBarcodesData').textContent);
 
 // ============================================
 // [JS-01] البيانات العامة للتطبيق
@@ -1945,7 +1946,7 @@ function setupImagePreviews() {
         invoiceFileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
-                const reader = new FileReader();
+                const reader = FileReader();
                 reader.onload = function(e) {
                     invoicePreviewContainer.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
                     invoicePreviewContainer.classList.add('has-image');
@@ -1973,7 +1974,7 @@ function setupImagePreviewForItem(itemIndex) {
         productImageInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
-                const reader = new FileReader();
+                const reader = FileReader();
                 reader.onload = function(e) {
                     previewContainer.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
                     previewContainer.classList.add('has-image');
@@ -2498,16 +2499,15 @@ function prepareFormForSubmit(form) {
     
     Object.keys(window.barcodeData).forEach(itemIndex => {
         if (window.barcodeData[itemIndex] && Array.isArray(window.barcodeData[itemIndex])) {
-            window.barcodeData[itemIndex].forEach((barcode) => {
-                if (barcode && barcode.trim() !== '') {
-                    const input = document.createElement('input');
-                    input.type = 'hidden';
-                    input.name = `item_${itemIndex}_barcodes`;
-                    input.value = barcode;
-                    form.appendChild(input);
-                }
-            });
-        }
+        window.barcodeData[itemIndex].forEach((barcode) => {
+            if (barcode && barcode.trim() !== '') {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = `item_${itemIndex}_barcodes`;
+                input.value = barcode;
+                form.appendChild(input);
+            }
+        });
     });
     
     return true;

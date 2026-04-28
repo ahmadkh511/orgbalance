@@ -76,7 +76,8 @@ body { background-color: var(--aqua-1); font-family: 'Tajawal', sans-serif; font
 
 {% block content %}
 <div class="container-fluid py-2">
-    <div id="sale-items-data" style="display: none;">{{ items_json|safe }}</div>
+    <!-- [XSS-FIX] تم استبدال div المخفي بـ json_script الآمن -->
+    {{ items_json|json_script:"sale-items-data" }}
 
     <form method="post" id="sale-return-form" enctype="multipart/form-data" novalidate>
         {% csrf_token %}
@@ -210,7 +211,6 @@ body { background-color: var(--aqua-1); font-family: 'Tajawal', sans-serif; font
                         </div>
                         <div class="financial-row">
                             <span>المبلغ المصروف نقداً:</span>
-                            <!-- تم التصحيح: استخدام id صريح لسهولة الوصول عبر JS -->
                             {{ form.paid_amount }}
                         </div>
                         <div class="financial-row grand-total">
@@ -241,11 +241,30 @@ body { background-color: var(--aqua-1); font-family: 'Tajawal', sans-serif; font
 {% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // تحميل البيانات
+
+    // ============================================
+    // [XSS-FIX-01] دالةescaping آمنة للنصوص في HTML
+    // ============================================
+    function escapeHtml(text) {
+        if (text === null || text === undefined) return '';
+        const div = document.createElement('div');
+        div.appendChild(document.createTextNode(String(text)));
+        return div.innerHTML;
+    }
+
+    // ============================================
+    // [XSS-FIX-02] قراءة البيانات بشكل آمن من json_script
+    // ============================================
     let originalSaleItems = [];
     try {
-        originalSaleItems = JSON.parse(document.getElementById('sale-items-data').textContent || '[]');
-    } catch (e) { console.error(e); }
+        const dataElement = document.getElementById('sale-items-data');
+        if (dataElement) {
+            originalSaleItems = JSON.parse(dataElement.textContent || '[]');
+        }
+    } catch (e) {
+        console.error('خطأ في تحليل بيانات البنود:', e);
+        originalSaleItems = [];
+    }
 
     // دوال التحديث
     function updateRowData(row, index) {
@@ -255,15 +274,30 @@ document.addEventListener('DOMContentLoaded', function() {
         const data = originalSaleItems.find(i => String(i.id) === String(idInput.value));
         if (!data) return;
 
-        // تحديث النصوص
+        // تحديث النصوص (قيم رقمية آمنة)
         row.querySelector('.val-sold').textContent = data.sold_quantity;
         row.querySelector('.val-ret').textContent = data.returned_quantity;
         row.querySelector('.val-ava').textContent = data.available_to_return;
 
-        // تحديث الصورة
+        // ============================================
+        // [XSS-FIX-03] تحديث الصورة بشكل آمن
+        // ============================================
         if (data.item_image) {
             const imgContainer = row.querySelector('.image-preview');
-            if (imgContainer) imgContainer.innerHTML = `<img src="${data.item_image}" style="width:100%;height:100%;object-fit:cover;">`;
+            if (imgContainer) {
+                // التحقق أن الرابط يبدأ بـ http أو / (رابط داخلي)
+                const imageUrl = String(data.item_image);
+                if (/^(https?:\/\/|\/)/.test(imageUrl)) {
+                    const img = document.createElement('img');
+                    img.src = imageUrl;
+                    img.alt = 'صورة المادة';
+                    img.style.width = '100%';
+                    img.style.height = '100%';
+                    img.style.objectFit = 'cover';
+                    imgContainer.innerHTML = '';
+                    imgContainer.appendChild(img);
+                }
+            }
         }
 
         // تحديث الحد الأقصى
@@ -296,16 +330,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (subHidden) subHidden.value = total.toFixed(2);
         if (finalHidden) finalHidden.value = total.toFixed(2);
         
-        // [تصحيح مهم] تحديث حقل paid_amount ليكون مساوياً للإجمالي افتراضياً
-        // المستخدم يمكنه تغييره إذا أراد دفع مبلغ أقل (آجل)
+        // تحديث حقل paid_amount ليكون مساوياً للإجمالي افتراضياً
         const paidInput = document.querySelector('[name="paid_amount"]');
         if (paidInput) {
-            // نقوم بتحديث القيمة فقط إذا كانت فارغة أو 0 لتسهيل الأمر،
-            // أو نجعلها دائماً تساوي الإجمالي (سلوك الفاتورة النقدية)
             paidInput.value = total.toFixed(2);
         }
     }
 
+    // ============================================
+    // [XSS-FIX-04] إعداد الباركودات بشكل آمن
+    // ============================================
     function setupBarcodes(index, barcodes, row) {
         const bRow = document.querySelector(`.barcode-row[data-item-index="${index}"]`);
         if (!bRow) return;
@@ -315,15 +349,27 @@ document.addEventListener('DOMContentLoaded', function() {
         barcodes.forEach((b, i) => {
             const item = document.createElement('div');
             item.className = 'barcode-checkbox-item';
-            item.innerHTML = `
-                <input type="checkbox" class="barcode-checkbox" value="${b.id}" id="bc_${index}_${i}">
-                <label for="bc_${index}_${i}" class="w-100 px-2" style="font-size:0.75rem; cursor:pointer;">
-                    ${b.barcode_in}
-                </label>
-            `;
+
+            // إنشاء checkbox بشكل آمن
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.className = 'barcode-checkbox';
+            checkbox.value = escapeHtml(String(b.id));
+            checkbox.id = `bc_${index}_${i}`;
+
+            // إنشاء label بشكل آمن باستخدام textContent
+            const label = document.createElement('label');
+            label.htmlFor = `bc_${index}_${i}`;
+            label.className = 'w-100 px-2';
+            label.style.fontSize = '0.75rem';
+            label.style.cursor = 'pointer';
+            label.textContent = String(b.barcode_in || ''); // [XSS-FIX] استخدام textContent بدلاً من innerHTML
+
+            item.appendChild(checkbox);
+            item.appendChild(label);
             grid.appendChild(item);
             
-            item.querySelector('.barcode-checkbox').addEventListener('change', function() {
+            checkbox.addEventListener('change', function() {
                 const count = bRow.querySelectorAll('.barcode-checkbox:checked').length;
                 row.querySelector('[name$="-returned_quantity"]').value = count;
                 item.classList.toggle('selected', this.checked);
@@ -353,7 +399,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    calculateTotals(); // استدعاء أولي
+    calculateTotals();
 
     // زر الباركودات
     document.getElementById('toggle-barcodes-btn').addEventListener('click', function() {

@@ -9,10 +9,10 @@
    [CSS-01] إعدادات التصميم العامة بألوان الأزوردي
    ============================================ */
 :root {
-  --aqua-1: #e0f7fa; /* خلفيات خفيفة */
-  --aqua-2: #b2ebf2; /* حدود / خطوط */
-  --aqua-3: #4dd0e1; /* عناصر تفاعلية */
-  --aqua-4: #0097a7; /* عناوين رئيسية وأزرار */
+  --aqua-1: #e0f7fa;
+  --aqua-2: #b2ebf2;
+  --aqua-3: #4dd0e1;
+  --aqua-4: #0097a7;
   --text-dark: #006064;
   --text-light: #ffffff;
   --shadow-sm: 0 2px 8px rgba(0, 150, 167, 0.08);
@@ -33,7 +33,6 @@ body {
   padding: 0.75rem;
 }
 
-/* البطاقات */
 .card {
   border: none;
   border-radius: 8px;
@@ -62,7 +61,6 @@ body {
   padding: 1rem;
 }
 
-/* الحقول */
 .form-label {
   font-weight: 500;
   font-size: 0.75rem;
@@ -86,7 +84,6 @@ body {
   box-shadow: 0 0 0 2px rgba(77, 208, 225, 0.2);
 }
 
-/* الأزرار */
 .btn {
   border-radius: 4px;
   padding: 0.35rem 0.7rem;
@@ -146,7 +143,6 @@ body {
   margin-bottom: 0.5rem;
 }
 
-/* إزالة أيقونة البحث */
 .customer-search-icon,
 .product-search-icon {
   display: none !important;
@@ -157,7 +153,6 @@ body {
   resize: none;
 }
 
-/* حقل المبلغ المدفوع */
 .paid-amount-container {
   transition: all 0.3s ease;
   opacity: 0;
@@ -165,6 +160,7 @@ body {
   overflow: hidden;
 }
 
+/* ✅ [إصلاح] كلاس show يُضاف بـ Django داخل class="" العادي */
 .paid-amount-container.show {
   opacity: 1;
   max-height: 80px;
@@ -316,7 +312,6 @@ body {
   text-align: center;
 }
 
-/* الباركودات - 7 أعمدة مع هوامش ضئيلة */
 .barcode-row {
   background-color: var(--aqua-1);
 }
@@ -358,7 +353,6 @@ body {
   font-size: 0.6rem;
 }
 
-/* ===== [CSS-NEW] أنماط التحقق من الباركود (نيون أحمر) ===== */
 .barcode-input.invalid-barcode {
     border: 1px solid #ff0033 !important;
     background-color: #fff0f0;
@@ -474,7 +468,7 @@ body {
 .stock-indicator.low { background: #f8d7da; color: #721c24; }
 
 /* ============================================
-   [CSS-05] صورة الفاتورة - تم تصغير الحجم
+   [CSS-05] صورة الفاتورة
    ============================================ */
 .invoice-image-preview {
   width: 70px;
@@ -660,16 +654,15 @@ body {
 
 {% block content %}
 <div class="container-fluid py-2">
-    <!-- معلومات الفاتورة -->
     <div class="alert alert-info mb-3">
         <i class="fas fa-edit"></i> تعديل فاتورة بيع رقم: <strong>{{ sale.uniqueId }}</strong> - تاريخ الإنشاء: {{ sale.date_created|date:"Y-m-d" }}
     </div>
 
-    <!-- نموذج فاتورة البيع -->
-    <form method="post" enctype="multipart/form-data" id="sale-form">
+    <!-- ✅ [إصلاح القاعدة الذهبية] نقل بيانات is_cash إلى data-* attribute بدلاً من إدخالها داخل <script> -->
+    <form method="post" enctype="multipart/form-data" id="sale-form"
+          data-is-cash-payment="{% if sale.sale_payment_method and sale.sale_payment_method.is_cash %}true{% else %}false{% endif %}">
         {% csrf_token %}
 
-        <!-- معلومات الفاتورة الأساسية -->
         <div class="card">
             <div class="card-header">
                 <i class="fas fa-info-circle"></i> معلومات الفاتورة الأساسية
@@ -745,7 +738,6 @@ body {
             </div>
         </div>
 
-        <!-- بنود الفاتورة -->
         <div class="items-section">
             <div class="items-header">
                 <h5><i class="fas fa-list"></i> بنود الفاتورة</h5>
@@ -833,7 +825,6 @@ body {
             </div>
         </div>
 
-        <!-- القسم المالي -->
         <div class="card">
             <div class="card-header">
                 <i class="fas fa-calculator"></i> القسم المالي
@@ -844,7 +835,7 @@ body {
                         <div class="image-input-container">
                             <div id="invoice-image-preview-container" class="invoice-image-preview" title="انقر لاختيار صورة الفاتورة">
                                 {% if sale.sale_image %}
-                                    <img src="{{ sale.sale_image.url }}" alt="صورة الفاتورة" style="width:100%;height:100%;object-fit:cover;">
+                                    <img src="{{ sale.sale_image.url }}" alt="صورة الفاتورة">
                                 {% else %}
                                     <i class="fas fa-camera"></i>
                                     <small>صورة الفاتورة</small>
@@ -882,8 +873,8 @@ body {
                                         <input type="number" class="form-control" id="invoice-discount" value="{{ sale.sale_discount|default:'0' }}" min="0" step="0.01">
                                     </div>
 
-                                    <!-- حقل المبلغ المدفوع (يظهر فقط للدفع النقدي) -->
-                                    <div class="paid-amount-container" id="paid-amount-container" {% if sale.sale_payment_method and sale.sale_payment_method.is_cash %}class="show"{% endif %}>
+                                    <!-- ✅ [إصلاح] كلاس class واحد موحّد — لا يوجد class مكرّر يُفقد paid-amount-container -->
+                                    <div class="paid-amount-container{% if sale.sale_payment_method and sale.sale_payment_method.is_cash %} show{% endif %}" id="paid-amount-container">
                                         <div class="financial-row">
                                             <span class="financial-label"><i class="fas fa-hand-holding-usd"></i> المبلغ المدفوع:</span>
                                             <input type="number" class="form-control" id="paid-amount" name="paid_amount" value="{{ sale.paid_amount|default:'0' }}" min="0" step="0.01">
@@ -894,19 +885,16 @@ body {
                                     </div>
                                 </div>
 
-                                <!-- الإجمالي العام -->
                                 <div class="financial-row grand-total">
                                     <span class="financial-label"><i class="fas fa-file-invoice-dollar"></i> الإجمالي العام:</span>
                                     <span class="financial-value" id="grand-total">{{ sale.sale_final_total|default:'0.00' }}</span>
                                 </div>
 
-                                <!-- المبلغ المتبقي -->
                                 <div class="financial-row remaining-amount">
                                     <span class="financial-label"><i class="fas fa-clock"></i> المبلغ المتبقي:</span>
                                     <span class="financial-value" id="remaining-amount">{{ sale.balance_due|default:'0.00' }}</span>
                                 </div>
 
-                                <!-- المبلغ المتبقي كتابة -->
                                 <div class="remaining-amount-in-words-container">
                                     <div class="remaining-amount-in-words">
                                         <div class="remaining-words-label">
@@ -930,7 +918,6 @@ body {
             </div>
         </div>
 
-        <!-- أزرار الحفظ -->
         <div class="form-actions">
             <button type="submit" class="btn btn-success">
                 <i class="fas fa-save"></i> حفظ التعديلات
@@ -948,16 +935,18 @@ body {
 {% block extra_js %}
 <script>
 // ============================================
-// [JS-00] المتغيرات العامة - تم إضافة جميع المتغيرات المفقودة
+// [JS-00] المتغيرات العامة
 // ============================================
 window.barcodeData = {};
 window.barcodesVisible = false;
 window.productsCache = {};
 window.customersCache = {};
-window.isPaymentMethodCash = {{ sale.sale_payment_method.is_cash|yesno:"true,false" }};
 window.paidAmountModified = false;
 window.initializationComplete = false;
 window.usedProductIds = new Set();
+
+// ✅ [إصلاح القاعدة الذهبية] قراءة القيمة من data-* attribute بدلاً من وسوم Django داخل <script>
+window.isPaymentMethodCash = document.getElementById('sale-form').dataset.isCashPayment === 'true';
 
 window.existingBarcodes = JSON.parse(document.getElementById('existingBarcodesData').textContent);
 
@@ -1102,10 +1091,7 @@ function showSuccessMessage(message) {
     
     const successMsg = document.createElement('div');
     successMsg.className = 'success-message';
-    successMsg.innerHTML = `
-        <i class="fas fa-check-circle me-2"></i>
-        ${message}
-    `;
+    successMsg.innerHTML = '<i class="fas fa-check-circle me-2"></i>' + message;
     
     const container = document.querySelector('.container-fluid');
     container.insertBefore(successMsg, container.firstChild);
@@ -1122,10 +1108,7 @@ function showErrorMessage(message) {
     
     const errorMsg = document.createElement('div');
     errorMsg.className = 'alert alert-danger error-message';
-    errorMsg.innerHTML = `
-        <i class="fas fa-exclamation-triangle me-2"></i>
-        ${message}
-    `;
+    errorMsg.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i>' + message;
     
     const container = document.querySelector('.container-fluid');
     container.insertBefore(errorMsg, container.firstChild);
@@ -1167,7 +1150,7 @@ let remainingAmountConverter = {
             this.currentCurrencyId = this.currencySelect.value;
         }
         
-        console.log(`📊 المبلغ المتبقي الحالي: ${this.currentRemainingAmount}, العملة: ${this.currentCurrencyId}`);
+        console.log('📊 المبلغ المتبقي الحالي: ' + this.currentRemainingAmount + ', العملة: ' + this.currentCurrencyId);
     },
     
     setupEventListeners: function() {
@@ -1199,47 +1182,27 @@ let remainingAmountConverter = {
     showLoading: function() {
         if (!this.displayElement) return;
         
-        this.displayElement.innerHTML = `
-            <div class="remaining-words-loading">
-                <i class="fas fa-spinner"></i>
-                <span>جاري التحويل...</span>
-            </div>
-        `;
+        this.displayElement.innerHTML = '<div class="remaining-words-loading"><i class="fas fa-spinner"></i><span>جاري التحويل...</span></div>';
     },
     
     showAmountZero: function() {
         if (!this.displayElement) return;
         
-        this.displayElement.innerHTML = `
-            <div class="remaining-words-zero">
-                <i class="fas fa-check-circle me-1"></i>
-                <span>المبلغ المتبقي صفر</span>
-            </div>
-        `;
+        this.displayElement.innerHTML = '<div class="remaining-words-zero"><i class="fas fa-check-circle me-1"></i><span>المبلغ المتبقي صفر</span></div>';
     },
     
     showError: function(message) {
         if (!this.displayElement) return;
         
-        this.displayElement.innerHTML = `
-            <div class="remaining-words-error">
-                <i class="fas fa-exclamation-triangle"></i>
-                <span>${message}</span>
-            </div>
-        `;
+        this.displayElement.innerHTML = '<div class="remaining-words-error"><i class="fas fa-exclamation-triangle"></i><span>' + message + '</span></div>';
     },
     
     updateDisplay: function(data) {
         if (!this.displayElement) return;
         
-        const currencySymbol = data.currency?.symbol || 'ل.س';
+        const currencySymbol = (data.currency && data.currency.symbol) ? data.currency.symbol : 'ل.س';
         
-        this.displayElement.innerHTML = `
-            <div>
-                ${data.amount_in_words}
-                <span class="remaining-words-currency">(${currencySymbol})</span>
-            </div>
-        `;
+        this.displayElement.innerHTML = '<div>' + data.amount_in_words + ' <span class="remaining-words-currency">(' + currencySymbol + ')</span></div>';
         
         console.log('✅ تم تحديث العرض بالمبلغ المتبقي المكتوب');
     },
@@ -1262,7 +1225,7 @@ let remainingAmountConverter = {
             return;
         }
         
-        const cacheKey = `${this.currentRemainingAmount.toFixed(2)}-${this.currentCurrencyId}`;
+        const cacheKey = this.currentRemainingAmount.toFixed(2) + '-' + this.currentCurrencyId;
         if (this.cache[cacheKey]) {
             console.log('💾 استخدام البيانات من التخزين المؤقت');
             this.updateDisplay(this.cache[cacheKey]);
@@ -1291,8 +1254,8 @@ let remainingAmountConverter = {
     },
     
     fetchAmountInWords: async function(amount, currencyId) {
-        const url = `/invoice/api/convert-to-words/?amount=${amount}&currency_id=${currencyId || ''}`;
-        console.log(`🌐 جلب البيانات من: ${url}`);
+        const url = '/invoice/api/convert-to-words/?amount=' + amount + '&currency_id=' + (currencyId || '');
+        console.log('🌐 جلب البيانات من: ' + url);
         
         try {
             const response = await fetch(url, {
@@ -1303,7 +1266,7 @@ let remainingAmountConverter = {
             });
             
             if (!response.ok) {
-                throw new Error(`خطأ في الشبكة: ${response.status}`);
+                throw new Error('خطأ في الشبكة: ' + response.status);
             }
             
             return await response.json();
@@ -1320,7 +1283,7 @@ function loadExistingBarcodes() {
     console.log('🔍 تحميل الباركودات الموجودة...', window.existingBarcodes);
     
     Object.keys(window.existingBarcodes).forEach(itemId => {
-        const itemRow = document.querySelector(`.item-row[data-item-id="${itemId}"]`);
+        const itemRow = document.querySelector('.item-row[data-item-id="' + itemId + '"]');
         if (itemRow) {
             const itemIndex = itemRow.getAttribute('data-item-index');
             const barcodes = window.existingBarcodes[itemId];
@@ -1331,7 +1294,7 @@ function loadExistingBarcodes() {
                 if (window.barcodesVisible) {
                     generateBarcodeFields(itemRow, itemIndex, barcodes.length);
                     
-                    const barcodeInputs = document.querySelectorAll(`.barcode-row[data-item-index="${itemIndex}"] .barcode-input`);
+                    const barcodeInputs = document.querySelectorAll('.barcode-row[data-item-index="' + itemIndex + '"] .barcode-input');
                     barcodeInputs.forEach((input, idx) => {
                         if (barcodes[idx]) {
                             input.value = barcodes[idx];
@@ -1345,11 +1308,11 @@ function loadExistingBarcodes() {
 }
 
 // ============================================
-// [JS-NEW] دالة التحقق من الباركود (ذكية) - تم إضافتها
+// [JS-NEW] دالة التحقق من الباركود (ذكية)
 // ============================================
 function validateBarcodeInput(inputElement, itemIndex) {
     const barcodeValue = inputElement.value.trim();
-    const itemRow = document.querySelector(`.item-row[data-item-index="${itemIndex}"]`);
+    const itemRow = document.querySelector('.item-row[data-item-index="' + itemIndex + '"]');
     
     if (!barcodeValue) {
         inputElement.classList.remove('invalid-barcode', 'valid-barcode');
@@ -1366,7 +1329,7 @@ function validateBarcodeInput(inputElement, itemIndex) {
         return;
     }
 
-    const url = `/invoice/get-product-barcodes/${productId}/?check_barcode=${encodeURIComponent(barcodeValue)}&sale_item_id=${itemId || ''}`;
+    const url = '/invoice/get-product-barcodes/' + productId + '/?check_barcode=' + encodeURIComponent(barcodeValue) + '&sale_item_id=' + (itemId || '');
 
     fetch(url)
         .then(response => response.json())
@@ -1449,7 +1412,7 @@ function initializeCustomerAutocomplete() {
                 return;
             }
 
-            fetch(`/invoice/search-customers/?q=${encodeURIComponent(query)}`)
+            fetch('/invoice/search-customers/?q=' + encodeURIComponent(query))
                 .then(response => response.json())
                 .then(data => {
                     window.customersCache[query] = data;
@@ -1473,15 +1436,11 @@ function initializeCustomerAutocomplete() {
             data.results.forEach(customer => {
                 const item = document.createElement('div');
                 item.className = 'autocomplete-item';
-                item.innerHTML = `
-                    <div class="autocomplete-item-content">
-                        <div class="autocomplete-item-title">${customer.text}</div>
-                        <div class="autocomplete-item-details">
-                            ${customer.phone ? `<span class="autocomplete-item-price"><i class="fas fa-phone me-1"></i>${customer.phone}</span>` : ''}
-                            ${customer.address ? `<span class="autocomplete-item-stock"><i class="fas fa-map-marker-alt me-1"></i>${customer.address}</span>` : ''}
-                        </div>
-                    </div>
-                `;
+                
+                let phoneHtml = customer.phone ? '<span class="autocomplete-item-price"><i class="fas fa-phone me-1"></i>' + customer.phone + '</span>' : '';
+                let addressHtml = customer.address ? '<span class="autocomplete-item-stock"><i class="fas fa-map-marker-alt me-1"></i>' + customer.address + '</span>' : '';
+                
+                item.innerHTML = '<div class="autocomplete-item-content"><div class="autocomplete-item-title">' + customer.text + '</div><div class="autocomplete-item-details">' + phoneHtml + addressHtml + '</div></div>';
                 
                 item.addEventListener('click', function() {
                     customerHidden.value = customer.id;
@@ -1555,7 +1514,7 @@ function initializeProductAutocomplete(productSearchInput, productHidden, priceI
             }
 
             isProcessing = true;
-            fetch(`/invoice/search-products/?q=${encodeURIComponent(query)}`)
+            fetch('/invoice/search-products/?q=' + encodeURIComponent(query))
                 .then(response => response.json())
                 .then(data => {
                     window.productsCache[query] = data;
@@ -1577,14 +1536,7 @@ function initializeProductAutocomplete(productSearchInput, productHidden, priceI
         resultsContainer.innerHTML = '';
         
         if (!data.results || data.results.length === 0) {
-            resultsContainer.innerHTML = `
-                <div class="autocomplete-item text-muted">
-                    <i class="fas fa-search me-2"></i>
-                    <div class="autocomplete-item-content">
-                        <div class="autocomplete-item-title">لا توجد منتجات مطابقة</div>
-                    </div>
-                </div>
-            `;
+            resultsContainer.innerHTML = '<div class="autocomplete-item text-muted"><i class="fas fa-search me-2"></i><div class="autocomplete-item-content"><div class="autocomplete-item-title">لا توجد منتجات مطابقة</div></div></div>';
         } else {
             data.results.forEach(product => {
                 const item = document.createElement('div');
@@ -1592,11 +1544,9 @@ function initializeProductAutocomplete(productSearchInput, productHidden, priceI
                 
                 let imageHtml = '';
                 if (product.image_url) {
-                    imageHtml = `<img src="${product.image_url}" alt="${product.text}">`;
+                    imageHtml = '<img src="' + product.image_url + '" alt="' + product.text + '">';
                 } else {
-                    imageHtml = `<div class="bg-light d-flex align-items-center justify-content-center" style="width:45px;height:45px;border-radius:6px;">
-                                   <i class="fas fa-box text-muted"></i>
-                                 </div>`;
+                    imageHtml = '<div class="bg-light d-flex align-items-center justify-content-center" style="width:45px;height:45px;border-radius:6px;"><i class="fas fa-box text-muted"></i></div>';
                 }
                 
                 let stockIndicator = '';
@@ -1615,7 +1565,7 @@ function initializeProductAutocomplete(productSearchInput, productHidden, priceI
                         stockText = 'مخزون متوسط';
                     }
                     
-                    stockIndicator = `<span class="stock-indicator ${stockClass}">${stockText}: ${product.stock}</span>`;
+                    stockIndicator = '<span class="stock-indicator ' + stockClass + '">' + stockText + ': ' + product.stock + '</span>';
                 }
                 
                 const isUsed = window.usedProductIds.has(parseInt(product.id));
@@ -1624,16 +1574,10 @@ function initializeProductAutocomplete(productSearchInput, productHidden, priceI
                     item.style.backgroundColor = '#f8d7da';
                 }
                 
-                item.innerHTML = `
-                    ${imageHtml}
-                    <div class="autocomplete-item-content">
-                        <div class="autocomplete-item-title">${product.text} ${isUsed ? '(مستخدم مسبقاً)' : ''}</div>
-                        <div class="autocomplete-item-details">
-                            ${product.price ? `<span class="autocomplete-item-price"><i class="fas fa-tag me-1"></i>${product.price} ر.س</span>` : ''}
-                            ${stockIndicator}
-                        </div>
-                    </div>
-                `;
+                let priceHtml = product.price ? '<span class="autocomplete-item-price"><i class="fas fa-tag me-1"></i>' + product.price + ' ر.س</span>' : '';
+                let usedLabel = isUsed ? ' (مستخدم مسبقاً)' : '';
+                
+                item.innerHTML = imageHtml + '<div class="autocomplete-item-content"><div class="autocomplete-item-title">' + product.text + usedLabel + '</div><div class="autocomplete-item-details">' + priceHtml + stockIndicator + '</div></div>';
                 
                 item.dataset.id = product.id;
                 item.dataset.price = product.price || '0';
@@ -1652,7 +1596,7 @@ function initializeProductAutocomplete(productSearchInput, productHidden, priceI
                     const productId = parseInt(this.dataset.id);
                     
                     productHidden.value = this.dataset.id;
-                    console.log(`✅ تم ربط المنتج: ${this.dataset.id} - ${this.dataset.text}`);
+                    console.log('✅ تم ربط المنتج: ' + this.dataset.id + ' - ' + this.dataset.text);
                     
                     if (priceInput) {
                         priceInput.value = this.dataset.price;
@@ -1670,10 +1614,10 @@ function initializeProductAutocomplete(productSearchInput, productHidden, priceI
                     
                     resultsContainer.classList.remove('show');
                     
-                    const previewContainer = document.getElementById(`product-image-preview-container-${itemIndex}`);
+                    const previewContainer = document.getElementById('product-image-preview-container-' + itemIndex);
                     if (previewContainer) {
                         if (this.dataset.image) {
-                            previewContainer.innerHTML = `<img src="${this.dataset.image}" alt="${this.dataset.text}">`;
+                            previewContainer.innerHTML = '<img src="' + this.dataset.image + '" alt="' + this.dataset.text + '">';
                             previewContainer.classList.add('has-image');
                             
                             let imageUrlField = productSearchInput.closest('.item-row').querySelector('.product-image-url-field');
@@ -1681,7 +1625,7 @@ function initializeProductAutocomplete(productSearchInput, productHidden, priceI
                                 imageUrlField = document.createElement('input');
                                 imageUrlField.type = 'hidden';
                                 imageUrlField.className = 'product-image-url-field';
-                                imageUrlField.name = `items-${itemIndex}-product_image_url`;
+                                imageUrlField.name = 'items-' + itemIndex + '-product_image_url';
                                 productSearchInput.closest('.item-row').appendChild(imageUrlField);
                             }
                             imageUrlField.value = this.dataset.image;
@@ -1691,15 +1635,15 @@ function initializeProductAutocomplete(productSearchInput, productHidden, priceI
                                 autoImageField = document.createElement('input');
                                 autoImageField.type = 'hidden';
                                 autoImageField.className = 'auto-image-field';
-                                autoImageField.name = `items-${itemIndex}-is_auto_image`;
+                                autoImageField.name = 'items-' + itemIndex + '-is_auto_image';
                                 autoImageField.value = 'true';
                                 productSearchInput.closest('.item-row').appendChild(autoImageField);
                             }
 
                             createFileFromImageUrl(this.dataset.image, this.dataset.text, itemIndex).then(() => {
-                                console.log(`✅ تم إنشاء ملف الصورة التلقائية للبند ${itemIndex}`);
+                                console.log('✅ تم إنشاء ملف الصورة التلقائية للبند ' + itemIndex);
                             }).catch(error => {
-                                console.error(`❌ خطأ في إنشاء ملف الصورة: ${error}`);
+                                console.error('❌ خطأ في إنشاء ملف الصورة: ' + error);
                             });
 
                         } else {
@@ -1735,12 +1679,11 @@ function initializeProductAutocomplete(productSearchInput, productHidden, priceI
     });
 }
 
-// دالة إنشاء ملف الصورة
 async function createFileFromImageUrl(imageUrl, productName, itemIndex) {
     try {
-        console.log(`🖼️ محاولة تحميل الصورة من: ${imageUrl}`);
+        console.log('🖼️ محاولة تحميل الصورة من: ' + imageUrl);
         const response = await fetch(imageUrl);
-        if (!response.ok) throw new Error(`فشل تحميل الصورة: ${response.status}`);
+        if (!response.ok) throw new Error('فشل تحميل الصورة: ' + response.status);
         const blob = await response.blob();
         let fileExtension = 'jpg';
         const urlParts = imageUrl.split('.');
@@ -1748,20 +1691,20 @@ async function createFileFromImageUrl(imageUrl, productName, itemIndex) {
             const ext = urlParts.pop().toLowerCase();
             if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) fileExtension = ext;
         }
-        const fileName = `product_${productName.replace(/[^a-zA-Z0-9]/g, '_')}.${fileExtension}`;
+        const fileName = 'product_' + productName.replace(/[^a-zA-Z0-9]/g, '_') + '.' + fileExtension;
         const file = new File([blob], fileName, { type: blob.type });
-        const fileInput = document.getElementById(`id_items-${itemIndex}-sale_item_image`);
+        const fileInput = document.getElementById('id_items-' + itemIndex + '-sale_item_image');
         if (fileInput) {
             const dataTransfer = new DataTransfer();
             dataTransfer.items.add(file);
             fileInput.files = dataTransfer.files;
             fileInput.dispatchEvent(new Event('change', { bubbles: true }));
-            console.log(`✅ تم تعيين الملف في حقل الإدخال للبند ${itemIndex}`);
+            console.log('✅ تم تعيين الملف في حقل الإدخال للبند ' + itemIndex);
         } else {
-            console.error(`❌ لم يتم العثور على حقل الملف للبند ${itemIndex}`);
+            console.error('❌ لم يتم العثور على حقل الملف للبند ' + itemIndex);
         }
     } catch (error) {
-        console.error(`❌ خطأ في تحميل الصورة التلقائية: ${error}`);
+        console.error('❌ خطأ في تحميل الصورة التلقائية: ' + error);
     }
 }
 
@@ -1777,65 +1720,37 @@ function addNewItem() {
     newRow.className = 'item-row';
     newRow.setAttribute('data-item-index', formNum);
     
-    newRow.innerHTML = `
-        <td class="text-center fw-bold">${formNum + 1}</td>
-        <td>
-            <input type="hidden" name="items-${formNum}-id" id="id_items-${formNum}-id">
-            <input type="hidden" name="items-${formNum}-sale" id="id_items-${formNum}-sale">
-            
-            <input type="hidden" name="items-${formNum}-item_name" class="item-name-field" value="">
-            
-            <input type="hidden" name="items-${formNum}-product_search" class="product-search-value" value="">
-            
-            <input type="hidden" name="items-${formNum}-product_image_url" class="product-image-url-field" value="">
-            <input type="hidden" name="items-${formNum}-is_auto_image" class="auto-image-field" value="">
-            
-            <div class="product-search-container">
-                <input type="text" class="form-control product-search-input" 
-                       placeholder="ابحث عن المادة بالاسم أو الباركود..." 
-                       autocomplete="off">
-                <div class="autocomplete-dropdown product-results"></div>
-            </div>
-            <input type="hidden" name="items-${formNum}-product" id="id_items-${formNum}-product">
-        </td>
-        <td>
-            <input type="number" name="items-${formNum}-sold_quantity" value="1" step="0.01" min="0.01" class="form-control" id="id_items-${formNum}-sold_quantity">
-        </td>
-        <td>
-            <input type="number" name="items-${formNum}-unit_price" value="0" step="0.01" min="0" class="form-control" id="id_items-${formNum}-unit_price">
-        </td>
-        <td>
-            <input type="text" class="form-control item-total" readonly value="0.00">
-        </td>
-        <td>
-            <input type="text" name="items-${formNum}-notes" class="form-control" id="id_items-${formNum}-notes">
-        </td>
-        <td class="text-center">
-            <div class="image-input-container">
-                <div id="product-image-preview-container-${formNum}" class="image-preview" title="انقر لاختيار صورة المادة">
-                    <i class="fas fa-camera"></i>
-                </div>
-                <input type="file" name="items-${formNum}-sale_item_image" class="hidden-file-input" accept="image/*" id="id_items-${formNum}-sale_item_image">
-            </div>
-        </td>
-        <td class="text-center">
-            <button type="button" class="delete-btn" title="حذف البند">
-                <i class="fas fa-trash"></i>
-            </button>
-        </td>
-    `;
+    newRow.innerHTML = '<td class="text-center fw-bold">' + (formNum + 1) + '</td>' +
+        '<td>' +
+            '<input type="hidden" name="items-' + formNum + '-id" id="id_items-' + formNum + '-id">' +
+            '<input type="hidden" name="items-' + formNum + '-sale" id="id_items-' + formNum + '-sale">' +
+            '<input type="hidden" name="items-' + formNum + '-item_name" class="item-name-field" value="">' +
+            '<input type="hidden" name="items-' + formNum + '-product_search" class="product-search-value" value="">' +
+            '<input type="hidden" name="items-' + formNum + '-product_image_url" class="product-image-url-field" value="">' +
+            '<input type="hidden" name="items-' + formNum + '-is_auto_image" class="auto-image-field" value="">' +
+            '<div class="product-search-container">' +
+                '<input type="text" class="form-control product-search-input" placeholder="ابحث عن المادة بالاسم أو الباركود..." autocomplete="off">' +
+                '<div class="autocomplete-dropdown product-results"></div>' +
+            '</div>' +
+            '<input type="hidden" name="items-' + formNum + '-product" id="id_items-' + formNum + '-product">' +
+        '</td>' +
+        '<td><input type="number" name="items-' + formNum + '-sold_quantity" value="1" step="0.01" min="0.01" class="form-control" id="id_items-' + formNum + '-sold_quantity"></td>' +
+        '<td><input type="number" name="items-' + formNum + '-unit_price" value="0" step="0.01" min="0" class="form-control" id="id_items-' + formNum + '-unit_price"></td>' +
+        '<td><input type="text" class="form-control item-total" readonly value="0.00"></td>' +
+        '<td><input type="text" name="items-' + formNum + '-notes" class="form-control" id="id_items-' + formNum + '-notes"></td>' +
+        '<td class="text-center">' +
+            '<div class="image-input-container">' +
+                '<div id="product-image-preview-container-' + formNum + '" class="image-preview" title="انقر لاختيار صورة المادة"><i class="fas fa-camera"></i></div>' +
+                '<input type="file" name="items-' + formNum + '-sale_item_image" class="hidden-file-input" accept="image/*" id="id_items-' + formNum + '-sale_item_image">' +
+            '</div>' +
+        '</td>' +
+        '<td class="text-center"><button type="button" class="delete-btn" title="حذف البند"><i class="fas fa-trash"></i></button></td>';
     
     const barcodeRow = document.createElement('tr');
     barcodeRow.className = 'barcode-row';
     barcodeRow.setAttribute('data-item-index', formNum);
     barcodeRow.style.display = window.barcodesVisible ? 'table-row' : 'none';
-    barcodeRow.innerHTML = `
-        <td colspan="8">
-            <div class="barcode-field-container">
-                <div class="barcode-fields-list"></div>
-            </div>
-        </td>
-    `;
+    barcodeRow.innerHTML = '<td colspan="8"><div class="barcode-field-container"><div class="barcode-fields-list"></div></div></td>';
     
     tbody.appendChild(newRow);
     tbody.appendChild(barcodeRow);
@@ -1844,8 +1759,8 @@ function addNewItem() {
     window.barcodeData[formNum] = [];
     
     const productSearchInput = newRow.querySelector('.product-search-input');
-    const productHidden = newRow.querySelector(`input[name="items-${formNum}-product"]`);
-    const priceInput = newRow.querySelector(`input[name="items-${formNum}-unit_price"]`);
+    const productHidden = newRow.querySelector('input[name="items-' + formNum + '-product"]');
+    const priceInput = newRow.querySelector('input[name="items-' + formNum + '-unit_price"]');
     
     if (productSearchInput && productHidden) {
         initializeProductAutocomplete(productSearchInput, productHidden, priceInput, formNum);
@@ -1867,7 +1782,7 @@ function addNewItem() {
 function initializeAllItems() {
     const items = document.querySelectorAll('.item-row');
     
-    items.forEach((item, index) => {
+    items.forEach((item) => {
         const itemIndex = item.getAttribute('data-item-index');
         
         if (!window.barcodeData[itemIndex]) {
@@ -1919,7 +1834,7 @@ function setupItemEvents(item) {
             }
             delete window.barcodeData[itemIndex];
             
-            const barcodeRow = document.querySelector(`.barcode-row[data-item-index="${itemIndex}"]`);
+            const barcodeRow = document.querySelector('.barcode-row[data-item-index="' + itemIndex + '"]');
             if (barcodeRow) barcodeRow.remove();
             
             item.remove();
@@ -1943,12 +1858,13 @@ function setupImagePreviews() {
         invoicePreviewContainer.addEventListener('click', function() {
             invoiceFileInput.click();
         });
+        // ✅ [إصلاح] إضافة new قبل FileReader()
         invoiceFileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
-                const reader = FileReader();
+                const reader = new FileReader();
                 reader.onload = function(e) {
-                    invoicePreviewContainer.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
+                    invoicePreviewContainer.innerHTML = '<img src="' + e.target.result + '">';
                     invoicePreviewContainer.classList.add('has-image');
                 };
                 reader.readAsDataURL(file);
@@ -1963,25 +1879,26 @@ function setupImagePreviews() {
 }
 
 function setupImagePreviewForItem(itemIndex) {
-    const productImageInput = document.getElementById(`id_items-${itemIndex}-sale_item_image`);
-    const previewContainer = document.getElementById(`product-image-preview-container-${itemIndex}`);
+    const productImageInput = document.getElementById('id_items-' + itemIndex + '-sale_item_image');
+    const previewContainer = document.getElementById('product-image-preview-container-' + itemIndex);
     
     if (productImageInput && previewContainer) {
         productImageInput.style.display = 'none';
         previewContainer.addEventListener('click', function() {
             productImageInput.click();
         });
+        // ✅ [إصلاح] إضافة new قبل FileReader()
         productImageInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
-                const reader = FileReader();
+                const reader = new FileReader();
                 reader.onload = function(e) {
-                    previewContainer.innerHTML = `<img src="${e.target.result}" style="width:100%;height:100%;object-fit:cover;">`;
+                    previewContainer.innerHTML = '<img src="' + e.target.result + '">';
                     previewContainer.classList.add('has-image');
                     
                     const manualImageField = document.createElement('input');
                     manualImageField.type = 'hidden';
-                    manualImageField.name = `items-${itemIndex}-manual_image_upload`;
+                    manualImageField.name = 'items-' + itemIndex + '-manual_image_upload';
                     manualImageField.value = 'true';
                     previewContainer.appendChild(manualImageField);
                 };
@@ -1992,10 +1909,10 @@ function setupImagePreviewForItem(itemIndex) {
 }
 
 // ============================================
-// [JS-10] نظام إدارة الباركودات (محدث) - تم إضافة جميع الدوال المفقودة
+// [JS-10] نظام إدارة الباركودات
 // ============================================
 function generateBarcodeFields(itemElement, itemIndex, quantity) {
-    const barcodeRow = document.querySelector(`.barcode-row[data-item-index="${itemIndex}"]`);
+    const barcodeRow = document.querySelector('.barcode-row[data-item-index="' + itemIndex + '"]');
     if (!barcodeRow) return;
     
     if (window.barcodesVisible) {
@@ -2025,17 +1942,8 @@ function generateBarcodeFields(itemElement, itemIndex, quantity) {
         
         const existingValue = window.barcodeData[itemIndex][i] || '';
         
-        barcodeField.innerHTML = `
-            <button type="button" class="barcode-remove-btn" 
-                    data-barcode-index="${i}" data-item-index="${itemIndex}" title="حذف الباركود">
-                <i class="fas fa-times"></i>
-            </button>
-            <input type="text" class="barcode-input" 
-                   placeholder="باركود ${i + 1}" 
-                   value="${existingValue}"
-                   data-barcode-index="${i}"
-                   data-item-index="${itemIndex}">
-        `;
+        barcodeField.innerHTML = '<button type="button" class="barcode-remove-btn" data-barcode-index="' + i + '" data-item-index="' + itemIndex + '" title="حذف الباركود"><i class="fas fa-times"></i></button>' +
+            '<input type="text" class="barcode-input" placeholder="باركود ' + (i + 1) + '" value="' + existingValue + '" data-barcode-index="' + i + '" data-item-index="' + itemIndex + '">';
         
         barcodeFieldsList.appendChild(barcodeField);
     }
@@ -2044,7 +1952,7 @@ function generateBarcodeFields(itemElement, itemIndex, quantity) {
 }
 
 function setupBarcodeFieldsEvents(itemElement, itemIndex) {
-    const barcodeRow = document.querySelector(`.barcode-row[data-item-index="${itemIndex}"]`);
+    const barcodeRow = document.querySelector('.barcode-row[data-item-index="' + itemIndex + '"]');
     if (!barcodeRow) return;
     
     const barcodeInputs = barcodeRow.querySelectorAll('.barcode-input');
@@ -2097,7 +2005,7 @@ function setupBarcodeFieldsEvents(itemElement, itemIndex) {
 }
 
 function renumberBarcodeFields(itemElement, itemIndex) {
-    const barcodeRow = document.querySelector(`.barcode-row[data-item-index="${itemIndex}"]`);
+    const barcodeRow = document.querySelector('.barcode-row[data-item-index="' + itemIndex + '"]');
     if (!barcodeRow) return;
     
     const barcodeFields = barcodeRow.querySelectorAll('.barcode-item');
@@ -2108,7 +2016,7 @@ function renumberBarcodeFields(itemElement, itemIndex) {
         
         if (barcodeInput) {
             barcodeInput.setAttribute('data-barcode-index', index);
-            barcodeInput.placeholder = `باركود ${index + 1}`;
+            barcodeInput.placeholder = 'باركود ' + (index + 1);
         }
         if (removeBtn) {
             removeBtn.setAttribute('data-barcode-index', index);
@@ -2124,7 +2032,7 @@ function autoFillBarcode(itemIndex, barcode) {
     }
     
     if (window.barcodesVisible) {
-        const barcodeRow = document.querySelector(`.barcode-row[data-item-index="${itemIndex}"]`);
+        const barcodeRow = document.querySelector('.barcode-row[data-item-index="' + itemIndex + '"]');
         if (barcodeRow) {
             const firstBarcodeInput = barcodeRow.querySelector('.barcode-input');
             if (firstBarcodeInput) {
@@ -2226,12 +2134,11 @@ function setupPaymentMethodEvent() {
     console.log('⚙️ إعداد حدث طريقة الدفع...');
     
     const paymentMethodSelect = document.getElementById('id_sale_payment_method');
-    const paidAmountContainer = document.getElementById('paid-amount-container');
     const paidAmountInput = document.getElementById('paid-amount');
     
     fetchCashBalance();
     
-    if (paymentMethodSelect && paidAmountContainer) {
+    if (paymentMethodSelect) {
         checkPaymentMethod(paymentMethodSelect.value);
         
         paymentMethodSelect.addEventListener('change', function() {
@@ -2255,8 +2162,8 @@ function updateItemCalculations(item) {
     const priceInput = item.querySelector('input[name$="-unit_price"]');
     const totalInput = item.querySelector('.item-total');
     
-    const quantity = parseFloat(quantityInput?.value) || 0;
-    const price = parseFloat(priceInput?.value) || 0;
+    const quantity = parseFloat(quantityInput ? quantityInput.value : 0) || 0;
+    const price = parseFloat(priceInput ? priceInput.value : 0) || 0;
     const total = quantity * price;
     
     if (totalInput) {
@@ -2324,7 +2231,7 @@ function adjustItemCount(targetCount) {
             }
             delete window.barcodeData[itemIndex];
             
-            const barcodeRow = document.querySelector(`.barcode-row[data-item-index="${itemIndex}"]`);
+            const barcodeRow = document.querySelector('.barcode-row[data-item-index="' + itemIndex + '"]');
             if (barcodeRow) barcodeRow.remove();
             
             item.remove();
@@ -2432,7 +2339,7 @@ function validateProductSelection() {
         const productSearchInput = item.querySelector('.product-search-input');
         
         if (!productHidden.value && productSearchInput.value.trim() === '') {
-            console.log(`❌ البند ${index + 1}: لم يتم اختيار منتج`);
+            console.log('❌ البند ' + (index + 1) + ': لم يتم اختيار منتج');
             hasErrors = true;
         }
     });
@@ -2454,7 +2361,7 @@ function prepareFormForSubmit(form) {
         return false;
     }
     
-    document.querySelectorAll('.item-row').forEach((item, index) => {
+    document.querySelectorAll('.item-row').forEach((item) => {
         const productSearchInput = item.querySelector('.product-search-input');
         const itemNameField = item.querySelector('.item-name-field');
         const productSearchValue = item.querySelector('.product-search-value');
@@ -2485,7 +2392,7 @@ function prepareFormForSubmit(form) {
     }
     
     financialFields.forEach(field => {
-        const existingField = form.querySelector(`input[name="${field.name}"]`);
+        const existingField = form.querySelector('input[name="' + field.name + '"]');
         if (!existingField) {
             const input = document.createElement('input');
             input.type = 'hidden';
@@ -2499,15 +2406,16 @@ function prepareFormForSubmit(form) {
     
     Object.keys(window.barcodeData).forEach(itemIndex => {
         if (window.barcodeData[itemIndex] && Array.isArray(window.barcodeData[itemIndex])) {
-        window.barcodeData[itemIndex].forEach((barcode) => {
-            if (barcode && barcode.trim() !== '') {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = `item_${itemIndex}_barcodes`;
-                input.value = barcode;
-                form.appendChild(input);
-            }
-        });
+            window.barcodeData[itemIndex].forEach((barcode) => {
+                if (barcode && barcode.trim() !== '') {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'item_' + itemIndex + '_barcodes';
+                    input.value = barcode;
+                    form.appendChild(input);
+                }
+            });
+        }
     });
     
     return true;
@@ -2533,15 +2441,15 @@ function validateForm() {
         const priceInput = item.querySelector('input[name$="-unit_price"]');
         
         if ((!productHidden || !productHidden.value) && (!productSearchInput || !productSearchInput.value)) {
-            errors.push(`البند ${index + 1}: يجب اختيار مادة`);
+            errors.push('البند ' + (index + 1) + ': يجب اختيار مادة');
         }
         
         if (!quantityInput || parseFloat(quantityInput.value) <= 0) {
-            errors.push(`البند ${index + 1}: يجب إدخال كمية صحيحة`);
+            errors.push('البند ' + (index + 1) + ': يجب إدخال كمية صحيحة');
         }
         
         if (!priceInput || parseFloat(priceInput.value) < 0) {
-            errors.push(`البند ${index + 1}: يجب إدخال سعر صحيح`);
+            errors.push('البند ' + (index + 1) + ': يجب إدخال سعر صحيح');
         }
     });
     
@@ -2555,12 +2463,10 @@ function showFormErrors(errors) {
     if (firstSection) {
         const errorContainer = document.createElement('div');
         errorContainer.className = 'alert alert-danger form-errors';
-        errorContainer.innerHTML = `
-            <h5 class="alert-heading">يوجد أخطاء في النموذج:</h5>
-            <ul class="mb-0">
-                ${errors.map(error => `<li>${error}</li>`).join('')}
-            </ul>
-        `;
+        
+        let errorList = errors.map(error => '<li>' + error + '</li>').join('');
+        
+        errorContainer.innerHTML = '<h5 class="alert-heading">يوجد أخطاء في النموذج:</h5><ul class="mb-0">' + errorList + '</ul>';
         firstSection.parentNode.insertBefore(errorContainer, firstSection);
         
         window.scrollTo({ top: 0, behavior: 'smooth' });

@@ -974,9 +974,11 @@
 
 {% block content %}
 
+
 <script type="application/json" id="storeCategoriesData">{{ categories_json|safe }}</script>
 <script type="application/json" id="storeSectionsData">{{ sections_json|safe }}</script>
 <script type="application/json" id="storeRecentOrders">{{ recent_orders_json|safe }}</script>
+
 <script type="application/json" id="storeLowStock">{{ low_stock_threshold }}</script>
 <meta name="flash-deals-url" content="{{ flash_deals_url }}">
 

@@ -224,7 +224,8 @@ import json
 from django.utils import timezone
 from .models import FlashDeal
 
-
+from django.contrib.auth.decorators import login_required, user_passes_test
+from accounts.views import is_staff_user
 
 
 
@@ -2181,7 +2182,7 @@ def cash_transaction_detail(request, pk):
 
 
 
-
+@login_required
 @require_GET
 def get_cash_balance(request):
     """جلب رصيد الصندوق الحالي"""
@@ -2194,6 +2195,7 @@ def get_cash_balance(request):
 
 
 
+@login_required
 @csrf_exempt
 @require_POST
 def update_payment_method_cash(request, pk):
@@ -2211,7 +2213,7 @@ def update_payment_method_cash(request, pk):
         return JsonResponse({'success': False, 'error': str(e)})
 
 
-
+@login_required
 @require_GET
 def get_payment_method(request, pk):
     """جلب بيانات طريقة الدفع"""
@@ -5562,7 +5564,10 @@ def api_update_product_category(request, product_id):
 #  إدارة الطلبات (عرض وتحويل لفاتورة)
 # ===============================================
 
+
+
 @login_required
+@user_passes_test(is_staff_user)
 def orders_list_view(request):
     """قائمة طلبات المتجر للمدير"""
     return render(request, 'invoice/store/admin_orders_list.html', {
@@ -5571,7 +5576,11 @@ def orders_list_view(request):
     })
 
 
+
+
+
 @login_required
+@user_passes_test(is_staff_user)
 def order_detail_view(request, order_id):
     """تفاصيل طلب معين"""
     order = get_object_or_404(WebsiteOrder, id=order_id)
@@ -5581,7 +5590,11 @@ def order_detail_view(request, order_id):
     })
 
 
+
+
+
 @login_required
+@user_passes_test(is_staff_user)
 def convert_order_to_invoice(request, order_id):
     """تحويل طلب المتجر إلى فاتورة بيع في نظام المحاسبة"""
     order = get_object_or_404(WebsiteOrder, id=order_id)

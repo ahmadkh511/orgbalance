@@ -662,6 +662,7 @@ from django.contrib import messages
 # تأكد من استيراد is_staff_user من ملف permissions أو utils الخاص بك
 # from .utils import is_staff_user 
 
+
 @login_required
 @user_passes_test(is_staff_user)
 def user_edit_view(request, pk):

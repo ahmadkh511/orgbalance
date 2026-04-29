@@ -3,6 +3,52 @@
 
 {% block title %}{{ title }}{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* تنسيقات النافذة المنبثقة للصورة */
+    .avatar-modal {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background-color: rgba(0, 0, 0, 0.8);
+        z-index: 9999;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 0.3s ease;
+    }
+    .avatar-modal.show {
+        display: flex;
+        opacity: 1;
+    }
+    .avatar-modal img {
+        max-width: 350px;
+        max-height: 350px;
+        width: 100%;
+        height: auto;
+        border-radius: 50%;
+        border: 5px solid #fff;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        transform: scale(0.8);
+        transition: transform 0.3s ease;
+    }
+    .avatar-modal.show img {
+        transform: scale(1);
+    }
+    
+    /* تأثير عند تمرير الماوس على الصورة الصغيرة لتنبيه المستخدم أنها قابلة للضغط */
+    .avatar-clickable {
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .avatar-clickable:hover {
+        transform: scale(1.2);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
@@ -22,10 +68,11 @@
                     <thead class="table-light">
                         <tr>
                             <th>#</th>
-                            <th>اسم المستخدم</th>
                             <th>الاسم الكامل</th>
                             <th>البريد الإلكتروني</th>
+                            <th>رقم الموبايل</th>
                             <th>نوع الحساب</th>
+                            <th>المجموعة</th>
                             <th>الحالة</th>
                             <th>تاريخ الإنشاء</th>
                             <th>إجراءات</th>
@@ -35,9 +82,26 @@
                         {% for user_obj in users %}
                         <tr>
                             <td>{{ forloop.counter }}</td>
-                            <td>{{ user_obj.username }}</td>
-                            <td>{{ user_obj.get_full_name|default:"-" }}</td>
+                            
+                        <!-- عمود الاسم مع الصورة (متناسق حتى مع الأسماء الطويلة) -->
+                        <td>
+                            <div class="d-flex align-items-center text-start" style="min-width: 200px; max-width: 250px; margin: 0 auto;">
+                                <!-- flex-shrink-0 يمنع الصورة من الانضغاط مهما كان الاسم طويلاً -->
+                                <img src="{% if user_obj.profile.profile_picture %}{{ user_obj.profile.profile_picture.url }}{% else %}{% static 'images/default_avatar.png' %}{% endif %}" 
+                                    alt="{{ user_obj.username }}" 
+                                    class="avatar-clickable rounded-circle me-2 border flex-shrink-0" 
+                                    style="width: 35px; height: 35px; object-fit: cover;"
+                                    onclick="openAvatar(this)">
+                                <!-- text-truncate يضع ... بدلاً من باقي الاسم الطويل -->
+                                <!-- title يظهر الاسم كاملاً عند تمرير الماوس -->
+                                <span class="text-truncate" title="{{ user_obj.get_full_name|default:user_obj.username }}">
+                                    {{ user_obj.get_full_name|default:user_obj.username }}
+                                </span>
+                            </div>
+                        </td>
+
                             <td>{{ user_obj.email|default:"-" }}</td>
+                            <td>{{ user_obj.profile.phone_number|default:"-" }}</td>
                             <td>
                                 {% if user_obj.is_superuser %}
                                     <span class="badge bg-danger">مدير رئيسي</span>
@@ -45,6 +109,13 @@
                                     <span class="badge bg-warning text-dark">موظف</span>
                                 {% else %}
                                     <span class="badge bg-info">مستخدم عادي</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user_obj.groups.all %}
+                                    <span class="badge bg-dark">{{ user_obj.groups.all.0.name }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
                                 {% endif %}
                             </td>
                             <td>
@@ -59,12 +130,11 @@
                                 <a href="{% url 'accounts:user_edit' user_obj.pk %}" class="btn btn-sm btn-outline-primary" title="تحرير">
                                     <i class="fas fa-edit"></i>
                                 </a>
-                                <!-- يمكنك إضافة زر الحذف لاحقًا -->
                             </td>
                         </tr>
                         {% empty %}
                         <tr>
-                            <td colspan="8">لا يوجد مستخدمون لعرضهم.</td>
+                            <td colspan="9">لا يوجد مستخدمون لعرضهم.</td>
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -73,4 +143,39 @@
         </div>
     </div>
 </div>
+
+<!-- النافذة المنبثقة (توضع خارج الجدول وتظهر مرة واحدة فقط في الصفحة) -->
+<div id="avatarModal" class="avatar-modal" onclick="closeAvatar()">
+    <img id="avatarModalImg" src="" alt="صورة مكبرة">
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openAvatar(imgElement) {
+    const modal = document.getElementById('avatarModal');
+    const modalImg = document.getElementById('avatarModalImg');
+    
+    // وضع مسار الصورة (سواء كانت شخصية أو الافتراضية) في النافذة المنبثقة
+    modalImg.src = imgElement.src;
+    
+    // إظهار النافذة مع تأثير
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden'; // منع التمرير في الصفحة عند فتح الصورة
+}
+
+function closeAvatar() {
+    const modal = document.getElementById('avatarModal');
+    modal.classList.remove('show');
+    document.body.style.overflow = 'auto'; // إعادة التمرير
+}
+
+// إغلاق الصورة بالضغط على زر Escape
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeAvatar();
+    }
+});
+</script>
 {% endblock %}

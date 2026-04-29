@@ -663,38 +663,45 @@ from django.contrib import messages
 # from .utils import is_staff_user 
 
 
+from django.contrib.auth.models import Group
+
 @login_required
 @user_passes_test(is_staff_user)
 def user_edit_view(request, pk):
     """تحرير بيانات مستخدم معين"""
     user = get_object_or_404(User, pk=pk)
     profile, created = Profile.objects.get_or_create(user=user)
-    
+
     if request.method == 'POST':
         form = UserUpdateForm(request.POST, instance=user)
-        # تمرير is_admin=True لتفعيل حقول (زبون/مورد) وإخفاء حقول الاسم
         profile_form = UserProfileUpdateForm(request.POST, request.FILES, instance=profile, is_admin=True)
-        
+
         if form.is_valid() and profile_form.is_valid():
             form.save()
             profile_form.save()
+
+            # حفظ مجموعة الصلاحيات
+            group_id = request.POST.get('groups')
+            user.groups.clear()
+            if group_id:
+                user.groups.add(group_id)
+
             messages.success(request, f'تم تحديث بيانات المستخدم "{user.username}" بنجاح.')
             return redirect('accounts:user_list')
     else:
         form = UserUpdateForm(instance=user)
-        # تمرير is_admin=True هنا أيضاً عند عرض الصفحة لأول مرة
         profile_form = UserProfileUpdateForm(instance=profile, is_admin=True)
-        
+
     context = {
         'form': form,
         'profile_form': profile_form,
         'user_to_edit': user,
         'profile': profile,
-        'title': f'تحرير المستخدم: {user.username}'
+        'title': f'تحرير المستخدم: {user.username}',
+        'available_groups': Group.objects.all(),
+        'user_group_ids': [g.id for g in user.groups.all()],
     }
     return render(request, 'accounts/user_edit.html', context)
-
-
 
 
 # ============================================

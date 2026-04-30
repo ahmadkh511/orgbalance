@@ -9,31 +9,31 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ==========================================
-# 2. كشف البيئة تلقائياً (السر هنا!)
+# 2. كشف البيئة تلقائياً
 # ==========================================
-# إذا وُجد ملف .env → نحن على الوكل المحلي (MySQL)
-# إذا لم يُوجد → نحن على الاستضافة (SQLite)
 IS_LOCAL = os.path.exists(BASE_DIR / '.env')
 
 if IS_LOCAL:
     load_dotenv(BASE_DIR / '.env')
 
-
 # ==========================================
-# 3. إعدادات الأمان الأساسية (السرية)
+# 3. إعدادات الأمان الأساسية
 # ==========================================
-# المفتاح السري: يُقرأ من .env محلياً، أو يُستخدم بديل آمن على الاستضافة
-SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-)hu-ahh&uj3$f2+w$f1t08bv!z)9vs3#)5u8h@)sw)rfosizi0') if IS_LOCAL else 'prod-secret-key-change-me-later-in-env'
+SECRET_KEY = os.getenv('SECRET_KEY')
 
-# وضع التطوير: تلقائي حسب البيئة
-DEBUG = IS_LOCAL  
+if not SECRET_KEY:
+    raise ValueError(
+        "❌ لم يتم تعيين SECRET_KEY!\n"
+        "• محلياً: تأكد من وجوده في ملف .env\n"
+        "• على الاستضافة: أضفه في ~/.bashrc أو في ملف wsgi.py"
+    )
 
-# المضيفون المسموح لهم: تلقائي حسب البيئة
+DEBUG = IS_LOCAL
+
 if IS_LOCAL:
     ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.1.108']
 else:
     ALLOWED_HOSTS = ['wcom.pythonanywhere.com']
-
 
 # ==========================================
 # 4. التطبيقات المثبتة
@@ -45,7 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'accounts.apps.AccountsConfig',  
+    'accounts.apps.AccountsConfig',
     'invoice.apps.InvoiceConfig',
 ]
 
@@ -70,7 +70,7 @@ ROOT_URLCONF = 'balanceIQ.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],  
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -87,12 +87,10 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'balanceIQ.wsgi.application'
 
-
 # ==========================================
-# 7. قاعدة البيانات (تلقائي حسب البيئة)
+# 7. قاعدة البيانات (MySQL في كلتا البيئتين)
 # ==========================================
 if IS_LOCAL:
-    # ===== وضع الوكل المحلي (MySQL) =====
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
@@ -103,18 +101,40 @@ if IS_LOCAL:
             'PORT': '3306',
             'OPTIONS': {
                 'charset': 'utf8mb4',
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
             }
         }
     }
 else:
-    # ===== وضع الاستضافة (SQLite مؤقت) =====
+    # ===== وضع الاستضافة (MySQL على PythonAnywhere) =====
+    PA_USERNAME = 'wcom'
+    PA_DB_NAME = 'wcom$accounting_db'
+    PA_DB_HOST = 'wcom.mysql.pythonanywhere-services.com'
+    PA_DB_PASSWORD = os.getenv('PA_DB_PASSWORD', '')
+
+    if not PA_DB_PASSWORD:
+        raise ValueError(
+            "❌ لم يتم تعيين PA_DB_PASSWORD!\n"
+            "أضفه في ~/.bashrc: export PA_DB_PASSWORD='your-password'"
+        )
+
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR / 'db.sqlite3',
+            'ENGINE': 'django.db.backends.mysql',
+            'NAME': PA_DB_NAME,
+            'USER': PA_USERNAME,
+            'PASSWORD': PA_DB_PASSWORD,
+            'HOST': PA_DB_HOST,
+            'PORT': '3306',
+            'OPTIONS': {
+                'charset': 'utf8mb4',
+                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            },
+            'TEST': {
+                'NAME': f'{PA_USERNAME}$test_accounting_db',
+            },
         }
     }
-
 
 # ==========================================
 # 8. التحقق من صحة كلمات المرور
@@ -126,7 +146,6 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-
 # ==========================================
 # 9. اللغة والوقت
 # ==========================================
@@ -135,9 +154,8 @@ TIME_ZONE = 'Asia/Amman'
 USE_I18N = True
 USE_TZ = True
 
-
 # ==========================================
-# 10. الملفات الثابتة (Static) والملفات المرفوعة (Media)
+# 10. الملفات الثابتة والملفات المرفوعة
 # ==========================================
 STATIC_URL = '/static/'
 STATICFILES_DIRS = [BASE_DIR / 'static']
@@ -146,7 +164,6 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
-
 # ==========================================
 # 11. إعدادات المصادقة وتسجيل الدخول
 # ==========================================
@@ -154,24 +171,21 @@ LOGIN_URL = 'accounts:login'
 LOGIN_REDIRECT_URL = 'index'
 LOGOUT_REDIRECT_URL = 'accounts:login'
 
-SESSION_EXPIRE_AT_BROWSER_CLOSE = False  
-SESSION_COOKIE_AGE = 1209600  
-PASSWORD_RESET_TIMEOUT = 86400  
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+SESSION_COOKIE_AGE = 1209600
+PASSWORD_RESET_TIMEOUT = 86400
 
-# رابط الموقع: تلقائي حسب البيئة
-SITE_URL = 'http://localhost:8000' if IS_LOCAL else 'https://ahmadkh511.pythonanywhere.com'
-
+SITE_URL = 'http://localhost:8000' if IS_LOCAL else 'https://wcom.pythonanywhere.com'
 
 # ==========================================
-# 12. إعدادات الأمان (تلقائي حسب البيئة)
+# 12. إعدادات الأمان
 # ==========================================
 if IS_LOCAL:
-    CSRF_COOKIE_SECURE = False  
-    SESSION_COOKIE_SECURE = False  
+    CSRF_COOKIE_SECURE = False
+    SESSION_COOKIE_SECURE = False
 else:
-    CSRF_COOKIE_SECURE = True  
-    SESSION_COOKIE_SECURE = True  
-
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
 
 # ==========================================
 # 13. نظام تسجيل الأحداث (Logging)

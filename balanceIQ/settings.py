@@ -9,8 +9,10 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # ==========================================
-# 2. كشف البيئة تلقائياً
+# 2. كشف البيئة تلقائياً (السر هنا!)
 # ==========================================
+# إذا وُجد ملف .env → نحن على الوكل المحلي (MySQL)
+# إذا لم يُوجد → نحن على الاستضافة (SQLite)
 IS_LOCAL = os.path.exists(BASE_DIR / '.env')
 
 if IS_LOCAL:
@@ -18,18 +20,10 @@ if IS_LOCAL:
 
 
 # ==========================================
-# 3. إعدادات الأمان الأساسية
+# 3. إعدادات الأمان الأساسية (السرية)
 # ==========================================
-# المفتاح السري: يُقرأ من متغير البيئة في كلتا البيئتين
-# المحلي: من ملف .env | الاستضافة: من ~/.bashrc أو wsgi.py
-SECRET_KEY = os.getenv('SECRET_KEY')
-
-if not SECRET_KEY:
-    raise ValueError(
-        "❌ لم يتم تعيين SECRET_KEY!\n"
-        "• محلياً: تأكد من وجوده في ملف .env\n"
-        "• على الاستضافة: أضفه في ~/.bashrc أو في ملف wsgi.py"
-    )
+# المفتاح السري: يُقرأ من .env محلياً، أو يُستخدم بديل آمن على الاستضافة
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-)hu-ahh&uj3$f2+w$f1t08bv!z)9vs3#)5u8h@)sw)rfosizi0') if IS_LOCAL else 'prod-secret-key-change-me-later-in-env'
 
 # وضع التطوير: تلقائي حسب البيئة
 DEBUG = IS_LOCAL  
@@ -95,10 +89,10 @@ WSGI_APPLICATION = 'balanceIQ.wsgi.application'
 
 
 # ==========================================
-# 7. قاعدة البيانات (MySQL في كلتا البيئتين)
+# 7. قاعدة البيانات (تلقائي حسب البيئة)
 # ==========================================
 if IS_LOCAL:
-    # ===== وضع الوكل المحلي (MySQL محلي) =====
+    # ===== وضع الوكل المحلي (MySQL) =====
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.mysql',
@@ -109,39 +103,15 @@ if IS_LOCAL:
             'PORT': '3306',
             'OPTIONS': {
                 'charset': 'utf8mb4',
-                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
             }
         }
     }
 else:
-    # ===== وضع الاستضافة (MySQL على PythonAnywhere) =====
-    # ⚠️ استبدل القيم التالية بقيم حسابك على PythonAnywhere
-    PA_USERNAME = 'wcom'  # ← اسم المستخدم على PythonAnywhere
-    PA_DB_NAME = 'wcom$accounting_db'  # ← اسم القاعدة: username$database_name
-    PA_DB_HOST = 'wcom.mysql.pythonanywhere-services.com'  # ← من تبويب Databases
-    PA_DB_PASSWORD = os.getenv('PA_DB_PASSWORD', '')  # ← من ~/.bashrc أو wsgi.py
-
-    if not PA_DB_PASSWORD:
-        raise ValueError(
-            "❌ لم يتم تعيين PA_DB_PASSWORD!\n"
-            "أضفه في ~/.bashrc: export PA_DB_PASSWORD='your-password'"
-        )
-
+    # ===== وضع الاستضافة (SQLite مؤقت) =====
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': PA_DB_NAME,
-            'USER': PA_USERNAME,
-            'PASSWORD': PA_DB_PASSWORD,
-            'HOST': PA_DB_HOST,
-            'PORT': '3306',
-            'OPTIONS': {
-                'charset': 'utf8mb4',
-                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            },
-            'TEST': {
-                'NAME': f'{PA_USERNAME}$test_accounting_db',
-            },
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
         }
     }
 
@@ -188,7 +158,8 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = False
 SESSION_COOKIE_AGE = 1209600  
 PASSWORD_RESET_TIMEOUT = 86400  
 
-SITE_URL = 'http://localhost:8000' if IS_LOCAL else 'https://wcom.pythonanywhere.com'
+# رابط الموقع: تلقائي حسب البيئة
+SITE_URL = 'http://localhost:8000' if IS_LOCAL else 'https://ahmadkh511.pythonanywhere.com'
 
 
 # ==========================================

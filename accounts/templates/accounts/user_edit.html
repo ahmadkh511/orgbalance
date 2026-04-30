@@ -89,6 +89,7 @@
                 <div class="info-card">
                     <div class="card-header"><h5><i class="fas fa-users me-2"></i>نوع المستخدم</h5></div>
                     <div class="card-body">
+                        <!-- يظهر فقط للادمن بفضل is_admin=True -->
                         <div class="form-check form-switch mb-3">
                             {{ profile_form.is_customer }}
                             <label class="form-check-label" for="{{ profile_form.is_customer.id_for_label }}">
@@ -104,26 +105,7 @@
                         <div class="form-text mt-2">يمكن تفعيل الخيارين معاً.</div>
                     </div>
                 </div>
-
-                <div class="info-card">
-                    <div class="card-header"><h5><i class="fas fa-shield-alt me-2"></i>مجموعة الصلاحيات</h5></div>
-                    <div class="card-body">
-                        <div class="mb-0">
-                            <label for="id_groups" class="form-label">اختر المجموعة</label>
-                            <select name="groups" id="id_groups" class="form-select">
-                                <option value="">-- بدون مجموعة --</option>
-                                {% for group in available_groups %}
-                                    <option value="{{ group.id }}" {% if group.id in user_group_ids %}selected{% endif %}>
-                                        {{ group.name }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                            <div class="form-text mt-2">تحديد المجموعة يمنح المستخدم جميع صلاحياتها تلقائياً.</div>
-                        </div>
-                    </div>
-                </div>
             </div>
-            <!-- نهاية العمود الأيسر -->
 
             <!-- العمود الأيمن -->
             <div class="col-lg-8">
@@ -198,13 +180,13 @@
                     <a href="{% url 'accounts:user_list' %}" class="btn btn-outline-secondary btn-lg"><i class="fas fa-times me-2"></i>إلغاء</a>
                 </div>
             </div>
-            <!-- نهاية العمود الأيمن -->
         </div>
     </form>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // معاينة الصورة
     const input = document.querySelector('input[type="file"]');
     const img = document.getElementById('avatar-preview');
     if (input && img) {

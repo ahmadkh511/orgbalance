@@ -2100,7 +2100,8 @@ def cash_dashboard(request):
     return render(request, 'invoice/cashbox/cash_dashboard.html', context)
 
 
-from django.utils.dateparse import parse_date  # تأكد من وجود هذا السطر في أعلى الملف
+import datetime  # تأكد من وجود هذا السطر في أعلى الملف
+from django.utils.dateparse import parse_date
 
 @login_required
 def cash_transaction_list(request):
@@ -2116,16 +2117,20 @@ def cash_transaction_list(request):
     if transaction_type:
         transactions_qs = transactions_qs.filter(transaction_type=transaction_type)
     
-    # === طريقة آمنة 100% لفلترة التواريخ بدون أخطاء ===
+    # === الحل الآمن 100% للبحث بالتاريخ (بدون مشاكل التوقيت) ===
     if start_date:
         parsed_start = parse_date(start_date)
         if parsed_start:
-            transactions_qs = transactions_qs.filter(transaction_date__date__gte=parsed_start)
+            # بداية اليوم (00:00:00)
+            start_dt = timezone.make_aware(datetime.datetime.combine(parsed_start, datetime.time.min))
+            transactions_qs = transactions_qs.filter(transaction_date__gte=start_dt)
             
     if end_date:
         parsed_end = parse_date(end_date)
         if parsed_end:
-            transactions_qs = transactions_qs.filter(transaction_date__date__lte=parsed_end)
+            # نهاية اليوم (23:59:59.999999)
+            end_dt = timezone.make_aware(datetime.datetime.combine(parsed_end, datetime.time.max))
+            transactions_qs = transactions_qs.filter(transaction_date__lte=end_dt)
 
     if search_query:
         transactions_qs = transactions_qs.filter(notes__icontains=search_query)

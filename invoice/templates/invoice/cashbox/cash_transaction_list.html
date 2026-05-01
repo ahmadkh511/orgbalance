@@ -36,14 +36,12 @@
 .form-control, .form-select { border-radius: var(--radius-sm); border: 1px solid var(--aqua-2); padding: 0.28rem 0.45rem; font-size: 0.78rem; font-family: 'Tajawal', sans-serif; transition: all 0.2s var(--ease); accent-color: var(--aqua-4); background-color: #fff; }
 .form-control:focus, .form-select:focus { border-color: var(--aqua-3); box-shadow: 0 0 0 2px rgba(77, 208, 225, 0.2); }
 
-/* === إصلاح السكرول: تم استخدام تخطيط عادي بدون أي تقييد للارتفاع === */
 .page-root {
     display: flex;
     flex-direction: column;
     gap: 0.6rem;
     padding: 0.5rem 1rem 2rem;
 }
-/* ====================================================== */
 
 .page-bar { display: flex; justify-content: space-between; align-items: center; }
 .page-bar h5 { margin: 0; font-size: 1.05rem; font-weight: 700; color: var(--text-dark); display: flex; align-items: center; gap: 0.45rem; }
@@ -70,7 +68,6 @@
 .filter-body { overflow: visible; transition: max-height 0.35s var(--ease), padding 0.3s var(--ease), opacity 0.2s ease; max-height: 0; opacity: 0; padding: 0 0.75rem; }
 .filter-body.show { max-height: 500px; opacity: 1; padding: 0.6rem 0.75rem; overflow: visible; }
 
-/* إزالة min-height: 0 لمنع اختناق السكرول */
 .table-card { display: flex; flex-direction: column; }
 .table-card .card-body { padding: 0; display: flex; flex-direction: column; }
 
@@ -255,19 +252,22 @@ html { scroll-behavior: smooth; }
                             <td class="amt-out">{{ transaction.amount_out|floatformat:2|default:"—" }}</td>
                             <td style="text-align:start; max-width:220px;">
                                 <span>{{ transaction.notes|truncatechars:40|default:"—" }}</span>
+                                
                                 {% if transaction.purchase_invoice %}
                                 <br>
-                                <a href="{{ transaction.purchase_invoice.get_absolute_url }}" class="inv-link">
+                                {# تم تعديل الرابط ليستخدم slug بدلاً من uniqueId #}
+                                <a href="{% url 'invoice:purch_detail' transaction.purchase_invoice.slug %}" class="inv-link">
                                     <i class="fas fa-solid fa-file-invoice"></i>
                                     {{ transaction.purchase_invoice.uniqueId }}
                                 </a>
                                 {% endif %}
+                                
                                 {% if transaction.sale_invoice %}
                                 <br>
-                                <a href="{{ transaction.sale_invoice.get_absolute_url }}" class="inv-link">
+                                <span class="inv-link" style="cursor: default; opacity: 0.6;">
                                     <i class="fas fa-solid fa-file-invoice-dollar"></i>
                                     {{ transaction.sale_invoice.uniqueId }}
-                                </a>
+                                </span>
                                 {% endif %}
                             </td>
                             <td>{{ transaction.created_by.username|default:"—" }}</td>

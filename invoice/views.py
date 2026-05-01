@@ -607,26 +607,26 @@ def purch_detail(request, slug):
 
 
 
-
 @login_required
 def purch_edit(request, slug):
-    """تعديل فاتورة شراء موجودة مع تحديث دقيق للمخزون والباركودات - النسخة المعدلة لتتوافق مع منطق المرتجعات الجديد"""
+    """تعديل فاتورة شراء موجودة مع تحديث دقيق للمخزون والباركودات - النسخة الأمنية"""
     from django.db.models import Q, Sum
     from decimal import Decimal
+    from django.core.exceptions import PermissionDenied
     
     purchase = get_object_or_404(Purch, slug=slug)
     
+    # 🔴 صلاحية: المستخدم لا يرى إلا فواتيره هو فقط
+    if purchase.created_by and purchase.created_by != request.user and not request.user.is_superuser:
+        raise PermissionDenied(_("ليس لديك صلاحية للوصول إلى هذه الفاتورة"))
+    
     print(f"🔍 بدء تعديل فاتورة: {purchase.uniqueId}")
     
-    # ======== التغيير الرئيسي لمشكلة العرض ========
     # حساب الكميات المرتجعة بعد آخر تعديل للفاتورة
-    # هذا يضمن عرض البيانات بشكل صحيح في صفحة التعديل
     reset_date = purchase.last_updated
     
-    # حساب الكميات المرتجعة لكل بند بعد آخر تعديل للفاتورة
     returned_items_data = {}
     for item in purchase.purchitem_set.all():
-        # استخدام نفس المنطق الجديد في حساب المرتجعات
         total_returned = item.returned_items.filter(
             purchase_return__date_created__gte=reset_date
         ).aggregate(total=Sum('returned_quantity'))['total']
@@ -635,17 +635,12 @@ def purch_edit(request, slug):
     if request.method == 'POST':
         print(f"📝 طلب POST - بدء معالجة البيانات")
         
-        # ============================================
-        # 🔧 نسخ البيانات أولاً وتعديلها
-        # ============================================
         post_data = request.POST.copy()
         files_data = request.FILES
         
         print(f"📊 بيانات POST الأصلية للمورد: {post_data.get('purch_supplier', 'غير محدد')}")
         
-        # ============================================
-        # 🔧 معالجة حقل المورد إذا جاء من حقل البحث
-        # ============================================
+        # معالجة حقل المورد إذا جاء من حقل البحث
         supplier_search_value = post_data.get('supplier-search-input', '')
         if supplier_search_value and supplier_search_value != '':
             print(f"🔍 معالجة حقل البحث عن المورد: {supplier_search_value}")
@@ -670,9 +665,7 @@ def purch_edit(request, slug):
             except Exception as e:
                 print(f"❌ خطأ في البحث عن المورد: {e}")
         
-        # ============================================
         # معالجة بيانات البنود
-        # ============================================
         total_forms = int(post_data.get('items-TOTAL_FORMS', 0))
         print(f"📊 عدد البنود في POST: {total_forms}")
         
@@ -707,11 +700,13 @@ def purch_edit(request, slug):
         
         print(f"📊 بيانات POST المعدلة للمورد: {post_data.get('purch_supplier', 'غير محدد')}")
         
-        # ============================================
-        # إنشاء النماذج مع البيانات المعدلة
-        # ============================================
         form = PurchEditForm(post_data, files_data, instance=purchase)
-        formset = PurchItemEditFormSet(post_data, files_data, instance=purchase, prefix='items', original_purchase=purchase)
+        formset = PurchItemEditFormSet(
+            post_data, files_data, instance=purchase, 
+            prefix='items', 
+            original_purchase=purchase,
+            returned_items_data=returned_items_data
+        )
         
         print(f"📋 صحة النموذج الرئيسي: {form.is_valid()}")
         print(f"📋 صحة formset: {formset.is_valid()}")
@@ -728,10 +723,6 @@ def purch_edit(request, slug):
                     
                     saved_items = formset.save(commit=False)
                     print(f"📊 عدد البنود المراد حفظها: {len(saved_items)}")
-                    
-                    # ============================================
-                    # 🔧 تحديث المخزون بشكل صحيح - النسخة المعدلة
-                    # ============================================
                     
                     for i, item_form in enumerate(formset):
                         item = item_form.instance
@@ -789,9 +780,7 @@ def purch_edit(request, slug):
                         print(f"✅ تم حفظ البند: {item.id}")
                         print(f"📊 الكمية المحفوظة: {item.purchased_quantity}, السعر: {item.unit_price}, الإجمالي: {item.purch_total}")
                         
-                        # ============================================
-                        # 🔧 تحديث المخزون يدوياً - المنطق المعدل
-                        # ============================================
+                        # تحديث المخزون يدوياً
                         if original_item:
                             print(f"🔄 تحديث المخزون للتعديل")
                             
@@ -803,24 +792,19 @@ def purch_edit(request, slug):
                                     print(f"🔄 معالجة مخزون المنتج: {product.product_name}")
                                     
                                     if product.id == old_product.id:
-                                        # ⭐⭐⭐ الحل الصحيح والآمن لنفس المنتج ⭐⭐⭐
-                                        
                                         old_stock = product.current_stock_quantity
                                         
-                                        # ======== تعديل طريقة حساب الكمية المرتجعة ========
-                                        # استخدام نفس المنطق الجديد في حساب المرتجعات
+                                        from invoice.models import PurchaseReturnItem
                                         total_returned = PurchaseReturnItem.objects.filter(
                                             original_item=original_item,
                                             purchase_return__date_created__gte=reset_date
                                         ).aggregate(total=Sum('returned_quantity'))['total'] or Decimal('0.00')
                                         
-                                        # احسب الكمية الفعالة قبل هذا التعديل
                                         effective_old_quantity = original_item.purchased_quantity - total_returned
                                         print(f"📊 الكمية الأصلية: {original_item.purchased_quantity}")
                                         print(f"📊 إجمالي المرتجع لهذا البند (بعد آخر تعديل): {total_returned}")
                                         print(f"📊 الكمية الفعالة القديمة (أصلية - مرتجع): {effective_old_quantity}")
                                         
-                                        # احسب الفارق بناءً على الكمية الفعالة
                                         quantity_difference = item.purchased_quantity - effective_old_quantity
                                         product.current_stock_quantity += quantity_difference
 
@@ -832,11 +816,9 @@ def purch_edit(request, slug):
                                         print(f"✅ تم تحديث مخزون المنتج بنجاح")
                                         
                                     else:
-                                        # ⭐⭐⭐ الحل الصحيح والآمن لتغيير المنتج ⭐⭐⭐
                                         print(f"🔄 تغيير المنتج: من {old_product.product_name} إلى {product.product_name}")
                                         
-                                        # ======== تعديل طريقة حساب الكمية المرتجعة ========
-                                        # استخدام نفس المنطق الجديد في حساب المرتجعات
+                                        from invoice.models import PurchaseReturnItem
                                         total_returned_old = PurchaseReturnItem.objects.filter(
                                             original_item=original_item,
                                             purchase_return__date_created__gte=reset_date
@@ -848,7 +830,6 @@ def purch_edit(request, slug):
                                         print(f"📉 خصم الكمية الفعالة من المنتج القديم: {effective_old_quantity_for_old_product}")
                                         print(f"📊 مخزون المنتج القديم الجديد: {old_product.current_stock_quantity}")
                                         
-                                        # 2. إضافة الكمية الجديدة للمنتج الجديد
                                         old_stock_new = product.current_stock_quantity
                                         product.current_stock_quantity += item.purchased_quantity
                                         product.save()
@@ -862,7 +843,6 @@ def purch_edit(request, slug):
                             else:
                                 print(f"⚠️ تحذير: أحد المنتجات غير موجود")
                         else:
-                            # حالة الإنشاء الجديد للبند
                             print(f"🆕 تحديث المخزون للإنشاء الجديد")
                             if item.product:
                                 try:
@@ -880,9 +860,7 @@ def purch_edit(request, slug):
                                 except Exception as e:
                                     print(f"❌ خطأ في إضافة المخزون الجديد: {e}")
                         
-                        # ============================================
-                        # معالجة الباركودات (بقيت كما هي)
-                        # ============================================
+                        # معالجة الباركودات
                         print(f"📊 معالجة الباركودات للبند {item.id}")
                         barcode_keys = [k for k in post_data.keys() if k.startswith(f'item_{i}_barcodes[')]
                         new_barcodes = [post_data.get(k, '').strip() for k in barcode_keys if post_data.get(k, '').strip()]
@@ -909,9 +887,7 @@ def purch_edit(request, slug):
                                 except Exception as e:
                                     print(f"❌ خطأ في معالجة الباركود: {e}")
                     
-                    # ============================================
-                    # 🔧 معالجة البنود المحذوفة
-                    # ============================================
+                    # معالجة البنود المحذوفة
                     for item in formset.deleted_objects:
                         print(f"\n🗑️ حذف البند: {item.id} - {item.item_name}")
                         item.delete()
@@ -933,10 +909,11 @@ def purch_edit(request, slug):
                     return redirect('invoice:purch_detail', slug=saved_purchase.slug)
 
             except Exception as e:
+                # 🔴 أمن: عدم كشف تفاصيل الخطأ الداخلي للمستخدم
                 print(f"❌ خطأ في تعديل فاتورة الشراء: {e}")
                 import traceback
                 traceback.print_exc()
-                messages.error(request, f'❌ حدث خطأ: {str(e)}')
+                messages.error(request, _('❌ حدث خطأ أثناء الحفظ، يرجى المحاولة مرة أخرى'))
         else:
             print(f"❌ أخطاء في النماذج")
             for field, errors in form.errors.items():
@@ -944,18 +921,16 @@ def purch_edit(request, slug):
             for form_in_formset in formset:
                 if form_in_formset.errors:
                     print(f"  Form {form_in_formset.prefix}: {form_in_formset.errors}")
-            messages.error(request, '❌ يرجى تصحيح الأخطاء في النموذج')
+            messages.error(request, _('❌ يرجى تصحيح الأخطاء في النموذج'))
     else:
         print(f"📄 طلب GET - تحميل صفحة التعديل")
         form = PurchEditForm(instance=purchase)
         
-        # ======== تعديل طريقة عرض البيانات في حالة GET ========
-        # تمرير بيانات المرتجعات إلى formset لعرضها بشكل صحيح
         formset = PurchItemEditFormSet(
             instance=purchase, 
             prefix='items', 
             original_purchase=purchase,
-            returned_items_data=returned_items_data  # تمرير بيانات المرتجعات كوسيط مسمى
+            returned_items_data=returned_items_data
         )
         print(f"✅ تم تحميل النماذج للعرض - عدد البنود: {len(formset)}")
 
@@ -965,6 +940,10 @@ def purch_edit(request, slug):
         'purchase': purchase,
         'title': f'تعديل فاتورة الشراء {purchase.uniqueId}'
     })
+
+
+
+
 
 
 

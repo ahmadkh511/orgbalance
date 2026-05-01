@@ -5,9 +5,6 @@
 
 {% block extra_css %}
 <style>
-/* ============================================
-   [CSS] جميع الأنماط
-   ============================================ */
 :root {
   --aqua-1: #e0f7fa;
   --aqua-2: #b2ebf2;
@@ -18,7 +15,6 @@
   --shadow-sm: 0 2px 8px rgba(0, 150, 167, 0.08);
   --shadow-md: 0 4px 12px rgba(0, 150, 167, 0.12);
 }
-
 * { box-sizing: border-box; }
 body { background-color: var(--aqua-1); font-family: 'Tajawal', sans-serif; font-size: 0.85rem; }
 .container-fluid { padding: 0.75rem; }
@@ -63,9 +59,6 @@ body { background-color: var(--aqua-1); font-family: 'Tajawal', sans-serif; font
 .barcode-fields-list { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.2rem; }
 .barcode-item { display: flex; align-items: center; background: white; border: 1px solid var(--aqua-2); border-radius: 3px; padding: 0.1rem; }
 .barcode-input { border: none; background: transparent; padding: 0.1rem; font-size: 0.65rem; font-family: monospace; width: 100%; }
-.barcode-input.error { border: 1px solid red; background-color: #fff0f0; }
-.barcode-input.warning { border: 1px solid orange; background-color: #fffaf0; }
-.barcode-input.valid { border: 1px solid #28a745; background-color: #f0fff0; }
 .barcode-remove-btn { background: none; border: none; color: #e53935; padding: 0 0.1rem; cursor: pointer; font-size: 0.6rem; }
 @media (max-width: 768px) { .barcode-fields-list { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 480px) { .barcode-fields-list { grid-template-columns: repeat(2, 1fr); } }
@@ -77,9 +70,6 @@ body { background-color: var(--aqua-1); font-family: 'Tajawal', sans-serif; font
 .autocomplete-item { padding: 0.4rem 0.5rem; cursor: pointer; border-bottom: 1px solid var(--aqua-1); display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; }
 .autocomplete-item:hover { background-color: var(--aqua-1); }
 .autocomplete-item img { width: 30px; height: 30px; object-fit: cover; border-radius: 3px; }
-.autocomplete-item-title { font-weight: 600; color: var(--text-dark); }
-.autocomplete-item-details { display: flex; gap: 0.5rem; font-size: 0.65rem; color: #555; }
-.autocomplete-item-price { color: #00897b; font-weight: 600; }
 .invoice-image-preview { width: 70px; height: 70px; border-radius: 6px; border: 2px dashed var(--aqua-2); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); color: var(--text-dark); margin: 0 auto 0.5rem; }
 .invoice-image-preview i { font-size: 1rem; color: var(--aqua-4); }
 .invoice-image-preview small { font-size: 0.6rem; }
@@ -104,6 +94,7 @@ body { background-color: var(--aqua-1); font-family: 'Tajawal', sans-serif; font
 .form-actions { display: flex; gap: 0.75rem; margin-top: 1rem; }
 .error-border { border-color: #dc3545 !important; background-color: #fff0f0 !important; }
 .hidden-field { display: none !important; }
+.item-row.deleted-row { display: none; }
 </style>
 {% endblock %}
 
@@ -132,7 +123,6 @@ body { background-color: var(--aqua-1); font-family: 'Tajawal', sans-serif; font
     <form method="post" enctype="multipart/form-data" id="purch-form" novalidate>
         {% csrf_token %}
         
-        <!-- معلومات الفاتورة الأساسية -->
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center"><i class="fas fa-edit me-2"></i><h5 class="mb-0">تعديل فاتورة الشراء: {{ purchase.uniqueId }}</h5></div>
@@ -147,10 +137,7 @@ body { background-color: var(--aqua-1); font-family: 'Tajawal', sans-serif; font
                             <div class="autocomplete-dropdown supplier-results"></div>
                         </div>
                         <input type="hidden" name="supplier-id-input" id="supplier-id-input" value="{% if purchase.purch_supplier %}{{ purchase.purch_supplier.id }}{% endif %}">
-                        <div style="display: none;">
-                            {{ form.purch_supplier }}
-                            <input type="hidden" name="purch_supplier" id="id_purch_supplier_django" value="{% if purchase.purch_supplier %}{{ purchase.purch_supplier.id }}{% endif %}">
-                        </div>
+                        <input type="hidden" name="purch_supplier" id="id_purch_supplier_django" value="{% if purchase.purch_supplier %}{{ purchase.purch_supplier.id }}{% endif %}">
                     </div>
                     <div class="col-md-2"><label class="form-label"><i class="fas fa-phone"></i>هاتف المورد</label>{{ form.purch_supplier_phone }}</div>
                     <div class="col-md-3"><label class="form-label"><i class="fas fa-map-marker-alt"></i>عنوان المورد</label>{{ form.purch_address }}</div>
@@ -170,7 +157,6 @@ body { background-color: var(--aqua-1); font-family: 'Tajawal', sans-serif; font
             </div>
         </div>
 
-        <!-- بنود الفاتورة -->
         <div class="items-section">
             <div class="items-header">
                 <h5><i class="fas fa-list"></i>بنود الفاتورة</h5>
@@ -200,17 +186,16 @@ body { background-color: var(--aqua-1); font-family: 'Tajawal', sans-serif; font
                         <tbody id="items-tbody">
                             {% for form in formset %}
                             {% with item=form.instance %}
-                            <tr class="item-row" data-item-index="{{ forloop.counter0 }}">
+                            <tr class="item-row" data-item-index="{{ forloop.counter0 }}" data-item-id="{% if item.id %}{{ item.id }}{% endif %}">
                                 <td class="text-center fw-bold item-number">{{ forloop.counter }}</td>
                                 <td>
-                                    <!-- حقل المنتج المخفي (Django Form) -->
                                     <div class="hidden-field">
-                                        {% for hidden in form.hidden_fields %}{{ hidden }}{% endfor %}
+                                        {% for hidden in form.hidden_fields %}{% if hidden.name != 'product' %}{{ hidden }}{% endif %}{% endfor %}
                                         <select name="items-{{ forloop.counter0 }}-product" id="id_items-{{ forloop.counter0 }}-product">
                                             {% if item.product %}<option value="{{ item.product.id }}" selected>{{ item.product.product_name }}</option>{% endif %}
                                         </select>
+                                        {% if item.id %}{{ form.DELETE }}{% else %}<input type="hidden" name="items-{{ forloop.counter0 }}-DELETE" value="">{% endif %}
                                     </div>
-                                    <!-- حقل البحث عن المنتج (مرئي للمستخدم) -->
                                     <div class="product-search-container" data-item-index="{{ forloop.counter0 }}">
                                         <input type="text" class="form-control product-search-input" 
                                                placeholder="ابحث عن المادة بالاسم أو الباركود..." 
@@ -218,15 +203,14 @@ body { background-color: var(--aqua-1); font-family: 'Tajawal', sans-serif; font
                                                autocomplete="off" 
                                                data-item-index="{{ forloop.counter0 }}"
                                                data-product-id="{% if item.product %}{{ item.product.id }}{% endif %}"
-                                               data-product-price="{% if item.unit_price %}{{ item.unit_price }}{% endif %}">
+                                               data-product-price="{{ item.unit_price|stringformat:'f' }}">
                                         <div class="autocomplete-dropdown product-results" data-item-index="{{ forloop.counter0 }}"></div>
                                     </div>
-                                    <!-- حقل اسم المادة المخفي (سيتم تعبئته تلقائياً) -->
                                     <input type="hidden" name="items-{{ forloop.counter0 }}-item_name" id="id_items-{{ forloop.counter0 }}-item_name" value="{% if item.product %}{{ item.product.product_name }}{% elif item.item_name %}{{ item.item_name }}{% endif %}">
                                 </td>
-                                <td><input type="number" name="items-{{ forloop.counter0 }}-purchased_quantity" value="{{ item.purchased_quantity }}" step="0.01" min="0.01" class="form-control quantity-input"></td>
-                                <td><input type="number" name="items-{{ forloop.counter0 }}-unit_price" value="{{ item.unit_price }}" step="0.01" min="0" class="form-control price-input"></td>
-                                <td><input type="text" class="form-control item-total" readonly value="{{ item.purch_total|default:'0.00' }}"></td>
+                                <td><input type="number" name="items-{{ forloop.counter0 }}-purchased_quantity" value="{{ item.purchased_quantity|stringformat:'f' }}" step="0.01" min="0.01" class="form-control quantity-input"></td>
+                                <td><input type="number" name="items-{{ forloop.counter0 }}-unit_price" value="{{ item.unit_price|stringformat:'f' }}" step="0.01" min="0" class="form-control price-input"></td>
+                                <td><input type="text" class="form-control item-total" readonly value="{{ item.purch_total|stringformat:'f' }}"></td>
                                 <td><input type="text" name="items-{{ forloop.counter0 }}-notes" class="form-control" value="{{ item.notes }}"></td>
                                 <td class="text-center">
                                     <div class="image-input-container">
@@ -237,7 +221,6 @@ body { background-color: var(--aqua-1); font-family: 'Tajawal', sans-serif; font
                                     </div>
                                 </td>
                                 <td class="text-center">
-                                    {% if item.id %}<div class="hidden-field">{{ form.DELETE }}</div>{% endif %}
                                     <button type="button" class="delete-btn" title="حذف البند"><i class="fas fa-trash"></i></button>
                                 </td>
                             </tr>
@@ -271,7 +254,6 @@ body { background-color: var(--aqua-1); font-family: 'Tajawal', sans-serif; font
             <div class="table-footer-actions"><button type="button" class="btn btn-success" id="add-single-item"><i class="fas fa-plus-circle me-1"></i>إضافة بند جديد</button></div>
         </div>
 
-        <!-- القسم المالي -->
         <div class="card mb-4">
             <div class="card-header d-flex align-items-center"><i class="fas fa-calculator me-2"></i><h5 class="mb-0">القسم المالي</h5></div>
             <div class="card-body">
@@ -292,9 +274,9 @@ body { background-color: var(--aqua-1); font-family: 'Tajawal', sans-serif; font
                             <div class="financial-hidden-fields">{{ form.purch_subtotal }}{{ form.purch_tax_amount }}{{ form.purch_final_total }}{{ form.balance_due }}{{ form.is_paid }}</div>
                             <div class="financial-grid">
                                 <div class="financial-column">
-                                    <div class="financial-row"><span class="financial-label"><i class="fas fa-receipt"></i>إجمالي البنود:</span><span class="financial-value" id="subtotal-amount">{{ purchase.purch_subtotal|default:'0.00' }}</span></div>
+                                    <div class="financial-row"><span class="financial-label"><i class="fas fa-receipt"></i>إجمالي البنود:</span><span class="financial-value" id="subtotal-amount">{{ purchase.purch_subtotal|floatformat:2 }}</span></div>
                                     <div class="financial-row"><span class="financial-label"><i class="fas fa-percentage"></i>الضريبة %:</span>{{ form.purch_tax_percentage }}</div>
-                                    <div class="financial-row"><span class="financial-label"><i class="fas fa-money-bill-wave"></i>قيمة الضريبة:</span><span class="financial-value" id="tax-amount">{{ purchase.purch_tax_amount|default:'0.00' }}</span></div>
+                                    <div class="financial-row"><span class="financial-label"><i class="fas fa-money-bill-wave"></i>قيمة الضريبة:</span><span class="financial-value" id="tax-amount">{{ purchase.purch_tax_amount|floatformat:2 }}</span></div>
                                 </div>
                                 <div class="financial-column">
                                     <div class="financial-row"><span class="financial-label"><i class="fas fa-plus-circle"></i>الإضافة:</span>{{ form.purch_addition }}</div>
@@ -303,8 +285,8 @@ body { background-color: var(--aqua-1); font-family: 'Tajawal', sans-serif; font
                                         <div class="financial-row"><span class="financial-label"><i class="fas fa-hand-holding-usd"></i>المبلغ المدفوع:</span>{{ form.paid_amount }}</div>
                                     </div>
                                 </div>
-                                <div class="financial-row grand-total"><span class="financial-label"><i class="fas fa-file-invoice-dollar"></i>الإجمالي العام:</span><span class="financial-value" id="grand-total">{{ purchase.purch_final_total|default:'0.00' }}</span></div>
-                                <div class="financial-row remaining-amount"><span class="financial-label"><i class="fas fa-clock"></i>المبلغ المتبقي:</span><span class="financial-value" id="remaining-amount">{{ purchase.balance_due|default:'0.00' }}</span></div>
+                                <div class="financial-row grand-total"><span class="financial-label"><i class="fas fa-file-invoice-dollar"></i>الإجمالي العام:</span><span class="financial-value" id="grand-total">{{ purchase.purch_final_total|floatformat:2 }}</span></div>
+                                <div class="financial-row remaining-amount"><span class="financial-label"><i class="fas fa-clock"></i>المبلغ المتبقي:</span><span class="financial-value" id="remaining-amount">{{ purchase.balance_due|floatformat:2 }}</span></div>
                             </div>
                         </div>
                     </div>
@@ -319,575 +301,346 @@ body { background-color: var(--aqua-1); font-family: 'Tajawal', sans-serif; font
 
 {% block extra_js %}
 <script>
-// ============================================
-// المتغيرات العامة
-// ============================================
 window.barcodeData = {};
 window.barcodeStatusData = {};
 window.barcodesVisible = true;
-window.productsCache = {};
-window.suppliersCache = {};
-window.initializationComplete = false;
 window.usedProductIds = new Set();
 window.isPaymentMethodCash = false;
 window.paidAmountModified = false;
-window.isInitialLoad = true;  // متغير جديد لمنع التعبئة التلقائية عند التحميل الأول
+window.isInitialLoad = true;
 
-// ============================================
-// دوال مساعدة
-// ============================================
 function showSuccessMessage(message) {
-    const oldMessages = document.querySelectorAll('.success-message');
-    oldMessages.forEach(msg => msg.remove());
-    const successMsg = document.createElement('div');
-    successMsg.className = 'success-message';
-    successMsg.innerHTML = `<i class="fas fa-check-circle me-2"></i>${message}`;
-    successMsg.style.display = 'block';
-    const container = document.querySelector('.container-fluid');
-    if (container) {
-        container.insertBefore(successMsg, container.firstChild);
-        setTimeout(() => { successMsg.style.opacity = '0'; setTimeout(() => successMsg.remove(), 500); }, 3000);
-    }
+    const old = document.querySelectorAll('.success-message'); old.forEach(m => m.remove());
+    const el = document.createElement('div'); el.className = 'success-message';
+    el.textContent = ''; const icon = document.createElement('i'); icon.className = 'fas fa-check-circle me-2'; el.appendChild(icon); el.appendChild(document.createTextNode(message));
+    el.style.display = 'block';
+    const c = document.querySelector('.container-fluid');
+    if (c) { c.insertBefore(el, c.firstChild); setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 500); }, 3000); }
 }
-
 function showErrorMessage(message) {
-    const oldMessages = document.querySelectorAll('.error-message');
-    oldMessages.forEach(msg => msg.remove());
-    const errorMsg = document.createElement('div');
-    errorMsg.className = 'alert alert-danger error-message';
-    errorMsg.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i>${message}`;
-    errorMsg.style.display = 'block';
-    const container = document.querySelector('.container-fluid');
-    if (container) {
-        container.insertBefore(errorMsg, container.firstChild);
-        setTimeout(() => { errorMsg.style.opacity = '0'; setTimeout(() => errorMsg.remove(), 500); }, 4000);
-    }
+    const old = document.querySelectorAll('.error-message'); old.forEach(m => m.remove());
+    const el = document.createElement('div'); el.className = 'alert alert-danger error-message';
+    el.textContent = ''; const icon = document.createElement('i'); icon.className = 'fas fa-exclamation-triangle me-2'; el.appendChild(icon); el.appendChild(document.createTextNode(message));
+    el.style.display = 'block';
+    const c = document.querySelector('.container-fluid');
+    if (c) { c.insertBefore(el, c.firstChild); setTimeout(() => { el.style.opacity = '0'; setTimeout(() => el.remove(), 500); }, 4000); }
 }
 
-// ============================================
-// دالة تحديث المبلغ المدفوع - معدلة
-// ============================================
-function copyGrandTotalToPaidAmount() {
-    // لا تقم بتعبئة paid_amount تلقائياً عند التحميل الأول أو إذا كان المستخدم قد عدل القيمة
-    if (window.isInitialLoad) return;
-    if (!window.isPaymentMethodCash || window.paidAmountModified) return;
-    const totalEl = document.getElementById('grand-total');
-    const paidInput = document.getElementById('id_paid_amount');
-    if (totalEl && paidInput) {
-        const total = parseFloat(totalEl.textContent) || 0;
-        paidInput.value = total.toFixed(2);
-        const remainingEl = document.getElementById('remaining-amount');
-        if (remainingEl) remainingEl.textContent = '0.00';
-    }
-}
-
-// ============================================
-// دالة تحديث الحسابات المالية - معدلة
-// ============================================
 function updateFinancialCalculations() {
     let subtotal = 0;
-    document.querySelectorAll('.item-total').forEach(totalInput => {
-        subtotal += parseFloat(totalInput.value) || 0;
+    document.querySelectorAll('.item-row:not(.deleted-row)').forEach(t => {
+        const totalInput = t.querySelector('.item-total');
+        if (totalInput) subtotal += parseFloat(totalInput.value) || 0;
     });
-    
-    const taxPercentage = parseFloat(document.getElementById('id_purch_tax_percentage').value) || 0;
-    const additionAmount = parseFloat(document.getElementById('id_purch_addition').value) || 0;
-    const discountAmount = parseFloat(document.getElementById('id_purch_discount').value) || 0;
-    
-    const taxAmount = subtotal * (taxPercentage / 100);
-    const grandTotal = subtotal + taxAmount + additionAmount - discountAmount;
-    
+    const tax = (parseFloat(document.getElementById('id_purch_tax_percentage').value) || 0) / 100 * subtotal;
+    const add = parseFloat(document.getElementById('id_purch_addition').value) || 0;
+    const disc = parseFloat(document.getElementById('id_purch_discount').value) || 0;
+    const total = subtotal + tax + add - disc;
     document.getElementById('subtotal-amount').textContent = subtotal.toFixed(2);
-    document.getElementById('tax-amount').textContent = taxAmount.toFixed(2);
-    document.getElementById('grand-total').textContent = grandTotal.toFixed(2);
-    
-    const paidInput = document.getElementById('id_paid_amount');
-    const remainingEl = document.getElementById('remaining-amount');
-    
-    if (paidInput && remainingEl) {
-        // استخدام القيمة الموجودة حالياً في حقل paid_amount (من قاعدة البيانات أو تعديل المستخدم)
-        const currentPaid = parseFloat(paidInput.value) || 0;
-        remainingEl.textContent = Math.max(0, grandTotal - currentPaid).toFixed(2);
-    }
-    
-    // تحديث الحقول المخفية
-    const taxAmountHidden = document.getElementById('id_purch_tax_amount');
-    const subtotalHidden = document.getElementById('id_purch_subtotal');
-    const finalTotalHidden = document.getElementById('id_purch_final_total');
-    const balanceDueHidden = document.getElementById('id_balance_due');
-    const isPaidHidden = document.getElementById('id_is_paid');
-    const finalPaid = parseFloat(paidInput?.value) || 0;
-    const finalRemaining = Math.max(0, grandTotal - finalPaid);
-    
-    if (taxAmountHidden) taxAmountHidden.value = taxAmount.toFixed(2);
-    if (subtotalHidden) subtotalHidden.value = subtotal.toFixed(2);
-    if (finalTotalHidden) finalTotalHidden.value = grandTotal.toFixed(2);
-    if (balanceDueHidden) balanceDueHidden.value = finalRemaining.toFixed(2);
-    if (isPaidHidden) isPaidHidden.value = finalRemaining === 0 ? 'true' : 'false';
+    document.getElementById('tax-amount').textContent = tax.toFixed(2);
+    document.getElementById('grand-total').textContent = total.toFixed(2);
+    const paid = parseFloat(document.getElementById('id_paid_amount')?.value) || 0;
+    const rem = Math.max(0, total - paid);
+    document.getElementById('remaining-amount').textContent = rem.toFixed(2);
+    const h = (id, v) => { const e = document.getElementById(id); if (e) e.value = v; };
+    h('id_purch_tax_amount', tax.toFixed(2)); h('id_purch_subtotal', subtotal.toFixed(2));
+    h('id_purch_final_total', total.toFixed(2)); h('id_balance_due', rem.toFixed(2));
+    h('id_is_paid', rem === 0 ? 'true' : 'false');
 }
 
 function updateItemCalculations(item) {
-    const quantity = parseFloat(item.querySelector('.quantity-input')?.value) || 0;
-    const price = parseFloat(item.querySelector('.price-input')?.value) || 0;
-    const totalInput = item.querySelector('.item-total');
-    if (totalInput) totalInput.value = (quantity * price).toFixed(2);
+    const q = parseFloat(item.querySelector('.quantity-input')?.value) || 0;
+    const p = parseFloat(item.querySelector('.price-input')?.value) || 0;
+    const t = item.querySelector('.item-total');
+    if (t) t.value = (q * p).toFixed(2);
     updateFinancialCalculations();
 }
 
-// ============================================
-// دالة طريقة الدفع - معدلة
-// ============================================
 function setupPaymentMethodEvent() {
-    const paymentMethodSelect = document.getElementById('id_purch_payment_method');
-    const paidAmountContainer = document.getElementById('paid-amount-container');
-    const paidAmountInput = document.getElementById('id_paid_amount');
-    
-    if (!paymentMethodSelect || !paidAmountContainer || !paidAmountInput) return;
-    
-    const checkPaymentMethod = (value) => {
-        if (!value) { paidAmountContainer.classList.remove('show'); window.isPaymentMethodCash = false; return; }
-        fetch(`/invoice/get-payment-method/${value}/`).then(res => res.json()).then(data => {
-            if (data.is_cash) { 
-                paidAmountContainer.classList.add('show'); 
-                window.isPaymentMethodCash = true; 
-                window.paidAmountModified = false; 
-                // لا نقوم بتعبئة paid_amount هنا
-            }
-            else { 
-                paidAmountContainer.classList.remove('show'); 
-                window.isPaymentMethodCash = false; 
-                paidAmountInput.value = '0'; 
-            }
+    const sel = document.getElementById('id_purch_payment_method');
+    const cont = document.getElementById('paid-amount-container');
+    const inp = document.getElementById('id_paid_amount');
+    if (!sel || !cont || !inp) return;
+    const check = v => {
+        if (!v) { cont.classList.remove('show'); window.isPaymentMethodCash = false; return; }
+        fetch(`/invoice/get-payment-method/${v}/`).then(r => r.json()).then(d => {
+            if (d.is_cash) { cont.classList.add('show'); window.isPaymentMethodCash = true; window.paidAmountModified = false; }
+            else { cont.classList.remove('show'); window.isPaymentMethodCash = false; inp.value = '0'; }
             updateFinancialCalculations();
-        }).catch(() => { paidAmountContainer.classList.remove('show'); window.isPaymentMethodCash = false; });
+        }).catch(() => { cont.classList.remove('show'); window.isPaymentMethodCash = false; });
     };
-    
-    const onPaidAmountInput = () => { 
-        if (window.isPaymentMethodCash) { 
-            window.paidAmountModified = true; 
-            updateFinancialCalculations(); 
-        } 
-    };
-    
-    paymentMethodSelect.addEventListener('change', function() { checkPaymentMethod(this.value); });
-    paidAmountInput.addEventListener('input', onPaidAmountInput);
-    checkPaymentMethod(paymentMethodSelect.value);
+    sel.addEventListener('change', function() { check(this.value); });
+    inp.addEventListener('input', () => { if (window.isPaymentMethodCash) { window.paidAmountModified = true; updateFinancialCalculations(); } });
+    check(sel.value);
 }
 
-// ============================================
-// دوال الباركود (بدون تغيير)
-// ============================================
-function generateBarcodeFields(itemElement, itemIndex, quantity) {
-    const barcodeRow = document.querySelector(`.barcode-row[data-item-index="${itemIndex}"]`);
-    if (!barcodeRow) return;
-    
-    if (window.barcodesVisible) barcodeRow.style.display = 'table-row';
-    else barcodeRow.style.display = 'none';
-    
-    const barcodeFieldsList = barcodeRow.querySelector('.barcode-fields-list');
-    if (!barcodeFieldsList) return;
-    
-    barcodeFieldsList.innerHTML = '';
-    if (!window.barcodeData[itemIndex]) window.barcodeData[itemIndex] = [];
-    if (!window.barcodeStatusData[itemIndex]) window.barcodeStatusData[itemIndex] = [];
-    
-    for (let i = 0; i < quantity; i++) {
-        const existingValue = window.barcodeData[itemIndex][i] || '';
-        const barcodeField = document.createElement('div');
-        barcodeField.className = 'barcode-item';
-        barcodeField.innerHTML = `
-            <div class="barcode-buttons"><button type="button" class="barcode-remove-btn" data-barcode-index="${i}" data-item-index="${itemIndex}" title="حذف الباركود"><i class="fas fa-times"></i></button></div>
-            <input type="text" class="barcode-input" placeholder="باركود ${i + 1}" value="${existingValue.replace(/"/g, '&quot;')}" data-barcode-index="${i}" data-item-index="${itemIndex}">
-            <input type="hidden" name="item_${itemIndex}_barcodes[${i}]" value="${existingValue.replace(/"/g, '&quot;')}">
-            <input type="hidden" name="item_${itemIndex}_barcode_status[${i}]" value="active">
-        `;
-        barcodeFieldsList.appendChild(barcodeField);
-        window.barcodeData[itemIndex][i] = existingValue;
-        window.barcodeStatusData[itemIndex][i] = 'active';
+function generateBarcodeFields(el, idx, qty) {
+    const row = document.querySelector(`.barcode-row[data-item-index="${idx}"]`);
+    if (!row) return;
+    row.style.display = window.barcodesVisible ? 'table-row' : 'none';
+    const list = row.querySelector('.barcode-fields-list');
+    if (!list) return;
+    list.innerHTML = '';
+    if (!window.barcodeData[idx]) window.barcodeData[idx] = [];
+    if (!window.barcodeStatusData[idx]) window.barcodeStatusData[idx] = [];
+    const existCount = window.barcodeData[idx].filter(v => v && v.trim()).length;
+    const count = Math.max(qty, existCount);
+    for (let i = 0; i < count; i++) {
+        const val = window.barcodeData[idx][i] || '';
+        const d = document.createElement('div'); d.className = 'barcode-item';
+        const btnDiv = document.createElement('div'); btnDiv.className = 'barcode-buttons';
+        const removeBtn = document.createElement('button'); removeBtn.type = 'button'; removeBtn.className = 'barcode-remove-btn'; removeBtn.title = 'حذف'; removeBtn.dataset.barcodeIndex = i; removeBtn.dataset.itemIndex = idx;
+        const removeIcon = document.createElement('i'); removeIcon.className = 'fas fa-times'; removeBtn.appendChild(removeIcon);
+        btnDiv.appendChild(removeBtn);
+        const bcInput = document.createElement('input'); bcInput.type = 'text'; bcInput.className = 'barcode-input'; bcInput.placeholder = 'باركود ' + (i+1); bcInput.value = val; bcInput.dataset.barcodeIndex = i; bcInput.dataset.itemIndex = idx;
+        const bcHidden = document.createElement('input'); bcHidden.type = 'hidden'; bcHidden.name = `item_${idx}_barcodes[${i}]`; bcHidden.value = val;
+        const bcStatus = document.createElement('input'); bcStatus.type = 'hidden'; bcStatus.name = `item_${idx}_barcode_status[${i}]`; bcStatus.value = 'active';
+        d.appendChild(btnDiv); d.appendChild(bcInput); d.appendChild(bcHidden); d.appendChild(bcStatus);
+        list.appendChild(d);
+        window.barcodeData[idx][i] = val;
     }
-    
-    barcodeFieldsList.querySelectorAll('.barcode-input').forEach(input => {
-        input.addEventListener('input', function() {
-            const barcodeIndex = parseInt(this.dataset.barcodeIndex);
-            const value = this.value.trim();
-            window.barcodeData[itemIndex][barcodeIndex] = value;
-            const hiddenInput = this.parentNode.querySelector('input[name*="barcodes"]');
-            if (hiddenInput) hiddenInput.value = value;
-        });
+    list.querySelectorAll('.barcode-input').forEach(inp => {
+        inp.addEventListener('input', function() { const i = parseInt(this.dataset.barcodeIndex); const idx2 = this.dataset.itemIndex; window.barcodeData[idx2][i] = this.value.trim(); const h = this.parentNode.querySelector('input[name*="barcodes"]'); if (h) h.value = this.value.trim(); });
     });
-    
-    barcodeFieldsList.querySelectorAll('.barcode-remove-btn').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const barcodeIndex = parseInt(this.dataset.barcodeIndex);
-            window.barcodeData[itemIndex].splice(barcodeIndex, 1);
-            window.barcodeStatusData[itemIndex].splice(barcodeIndex, 1);
-            this.closest('.barcode-item').remove();
-            const quantityInput = itemElement.querySelector('.quantity-input');
-            if (quantityInput) {
-                quantityInput.value = Math.max(1, window.barcodeData[itemIndex].length);
-                updateItemCalculations(itemElement);
-            }
-        });
+    list.querySelectorAll('.barcode-remove-btn').forEach(btn => {
+        btn.addEventListener('click', function() { const i = parseInt(this.dataset.barcodeIndex); const idx2 = this.dataset.itemIndex; window.barcodeData[idx2].splice(i,1); window.barcodeStatusData[idx2].splice(i,1); this.closest('.barcode-item').remove(); });
     });
 }
 
 function showAllBarcodes() {
-    document.querySelectorAll('.barcode-row').forEach(row => row.style.display = 'table-row');
-    document.querySelectorAll('.item-row').forEach(item => {
+    document.querySelectorAll('.barcode-row').forEach(r => r.style.display = 'table-row');
+    document.querySelectorAll('.item-row:not(.deleted-row)').forEach(item => {
         const idx = item.dataset.itemIndex;
         const qty = parseInt(item.querySelector('.quantity-input')?.value) || 1;
-        generateBarcodeFields(item, idx, qty);
+        const bc = window.barcodeData[idx] ? window.barcodeData[idx].filter(v => v && v.trim()).length : 0;
+        generateBarcodeFields(item, idx, Math.max(qty, bc));
     });
 }
-
-function hideAllBarcodes() { document.querySelectorAll('.barcode-row').forEach(row => row.style.display = 'none'); }
+function hideAllBarcodes() { document.querySelectorAll('.barcode-row').forEach(r => r.style.display = 'none'); }
 
 function setupBarcodeToggle() {
-    const toggleBtn = document.getElementById('toggle-barcodes-btn');
-    if (toggleBtn) {
-        window.barcodesVisible = true;
-        showAllBarcodes();
-        toggleBtn.innerHTML = '<i class="fas fa-eye-slash me-1"></i>إخفاء حقول الباركود';
-        toggleBtn.addEventListener('click', function() {
+    const btn = document.getElementById('toggle-barcodes-btn');
+    if (btn) {
+        window.barcodesVisible = true; showAllBarcodes();
+        const icon = document.createElement('i'); icon.className = 'fas fa-eye-slash me-1'; btn.textContent = ''; btn.appendChild(icon); btn.appendChild(document.createTextNode('إخفاء حقول الباركود'));
+        btn.addEventListener('click', function() {
             window.barcodesVisible = !window.barcodesVisible;
-            if (window.barcodesVisible) { showAllBarcodes(); this.innerHTML = '<i class="fas fa-eye-slash me-1"></i>إخفاء حقول الباركود'; }
-            else { hideAllBarcodes(); this.innerHTML = '<i class="fas fa-eye me-1"></i>إظهار حقول الباركود'; }
+            this.textContent = '';
+            if (window.barcodesVisible) { showAllBarcodes(); const ic = document.createElement('i'); ic.className = 'fas fa-eye-slash me-1'; this.appendChild(ic); this.appendChild(document.createTextNode('إخفاء حقول الباركود')); }
+            else { hideAllBarcodes(); const ic = document.createElement('i'); ic.className = 'fas fa-eye me-1'; this.appendChild(ic); this.appendChild(document.createTextNode('إظهار حقول الباركود')); }
         });
     }
 }
 
-// ============================================
-// دوال البحث عن المنتجات والموردين
-// ============================================
 function setupSupplierAutocomplete() {
-    const searchInput = document.getElementById('supplier-search-input');
-    const resultsContainer = document.querySelector('.supplier-results');
-    const supplierHidden = document.getElementById('supplier-id-input');
-    const djangoSupplierField = document.querySelector('[name="purch_supplier"]');
-    const djangoHiddenField = document.getElementById('id_purch_supplier_django');
-    if (!searchInput) return;
-    
-    let searchTimeout, currentQuery = '';
-    const updateSupplierFields = (id, name, phone, address) => {
-        if (supplierHidden) supplierHidden.value = id;
-        if (djangoSupplierField) djangoSupplierField.value = id;
-        if (djangoHiddenField) djangoHiddenField.value = id;
-        const phoneField = document.getElementById('id_purch_supplier_phone');
-        const addressField = document.getElementById('id_purch_address');
-        if (phoneField && phone) phoneField.value = phone;
-        if (addressField && address) addressField.value = address;
+    const inp = document.getElementById('supplier-search-input');
+    const res = document.querySelector('.supplier-results');
+    const hid1 = document.getElementById('supplier-id-input');
+    const hid2 = document.querySelector('[name="purch_supplier"]');
+    if (!inp) return;
+    let to, q = '';
+    const upd = (id, n, p, a) => {
+        if (hid1) hid1.value = id; if (hid2) hid2.value = id;
+        const pf = document.getElementById('id_purch_supplier_phone'); if (pf && p) pf.value = p;
+        const af = document.getElementById('id_purch_address'); if (af && a) af.value = a;
     };
-    
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        const query = this.value.trim();
-        currentQuery = query;
-        if (query.length < 2) { resultsContainer.classList.remove('show'); return; }
-        resultsContainer.innerHTML = '<div class="autocomplete-item">جاري البحث...</div>';
-        resultsContainer.classList.add('show');
-        searchTimeout = setTimeout(() => {
-            fetch(`/invoice/search-suppliers/?q=${encodeURIComponent(query)}`).then(res => res.json()).then(data => {
-                if (query !== currentQuery) return;
-                resultsContainer.innerHTML = '';
-                if (!data.results || data.results.length === 0) { resultsContainer.innerHTML = '<div class="autocomplete-item text-muted">لا توجد نتائج</div>'; return; }
-                data.results.forEach(sup => {
-                    const item = document.createElement('div');
-                    item.className = 'autocomplete-item';
-                    item.innerHTML = `<div><strong>${sup.text}</strong>${sup.phone ? `<br><small>${sup.phone}</small>` : ''}</div>`;
-                    item.addEventListener('click', () => {
-                        searchInput.value = sup.text;
-                        updateSupplierFields(sup.id, sup.text, sup.phone, sup.address);
-                        resultsContainer.classList.remove('show');
-                        searchInput.classList.remove('error-border');
-                        showSuccessMessage(`تم اختيار المورد: ${sup.text}`);
-                    });
-                    resultsContainer.appendChild(item);
+    inp.addEventListener('input', function() {
+        clearTimeout(to); q = this.value.trim();
+        if (q.length < 2) { res.classList.remove('show'); return; }
+        res.textContent = ''; const loading = document.createElement('div'); loading.className = 'autocomplete-item'; loading.textContent = 'جاري البحث...'; res.appendChild(loading); res.classList.add('show');
+        to = setTimeout(() => {
+            fetch(`/invoice/search-suppliers/?q=${encodeURIComponent(q)}`).then(r => r.json()).then(d => {
+                if (q !== inp.value.trim()) return; res.textContent = '';
+                if (!d.results || !d.results.length) { const noRes = document.createElement('div'); noRes.className = 'autocomplete-item text-muted'; noRes.textContent = 'لا توجد نتائج'; res.appendChild(noRes); return; }
+                d.results.forEach(s => {
+                    const el = document.createElement('div'); el.className = 'autocomplete-item';
+                    const nameDiv = document.createElement('div');
+                    const strong = document.createElement('strong'); strong.textContent = s.text; nameDiv.appendChild(strong);
+                    if (s.phone) { nameDiv.appendChild(document.createElement('br')); const small = document.createElement('small'); small.textContent = s.phone; nameDiv.appendChild(small); }
+                    el.appendChild(nameDiv);
+                    el.addEventListener('click', () => { inp.value = s.text; upd(s.id, s.text, s.phone, s.address); res.classList.remove('show'); inp.classList.remove('error-border'); showSuccessMessage('تم اختيار المورد: ' + s.text); });
+                    res.appendChild(el);
                 });
             });
         }, 400);
     });
-    document.addEventListener('click', (e) => { if (!searchInput.contains(e.target) && !resultsContainer.contains(e.target)) resultsContainer.classList.remove('show'); });
+    document.addEventListener('click', e => { if (!inp.contains(e.target) && !res.contains(e.target)) res.classList.remove('show'); });
 }
 
-function setupProductAutocomplete(item, itemIndex) {
-    const searchInput = item.querySelector('.product-search-input');
-    const priceInput = item.querySelector(`input[name="items-${itemIndex}-unit_price"]`);
-    const itemNameInput = item.querySelector(`#id_items-${itemIndex}-item_name`);
-    const productSelect = item.querySelector(`select[name="items-${itemIndex}-product"]`);
-    const resultsContainer = item.querySelector('.product-results');
-    const previewContainer = document.getElementById(`product-image-preview-container-${itemIndex}`);
-    
-    if (!searchInput) return;
-    
-    let searchTimeout, currentQuery = '';
-    searchInput.addEventListener('input', function() {
-        clearTimeout(searchTimeout);
-        const query = this.value.trim();
-        currentQuery = query;
-        if (query.length < 2) { resultsContainer.classList.remove('show'); return; }
-        resultsContainer.innerHTML = '<div class="autocomplete-item">جاري البحث...</div>';
-        resultsContainer.classList.add('show');
-        searchTimeout = setTimeout(() => {
-            fetch(`/invoice/search-products/?q=${encodeURIComponent(query)}`).then(res => res.json()).then(data => {
-                if (query !== currentQuery) return;
-                resultsContainer.innerHTML = '';
-                if (!data.results || data.results.length === 0) { resultsContainer.innerHTML = '<div class="autocomplete-item text-muted">لا توجد نتائج</div>'; return; }
-                data.results.forEach(prod => {
-                    const isUsed = window.usedProductIds.has(parseInt(prod.id));
-                    const itemDiv = document.createElement('div');
-                    itemDiv.className = 'autocomplete-item';
-                    if (isUsed) itemDiv.style.backgroundColor = '#f8d7da';
-                    
-                    let imageHtml = '';
-                    if (prod.image_url) {
-                        imageHtml = `<img src="${prod.image_url}" style="width: 30px; height: 30px; object-fit: cover; border-radius: 4px;">`;
+function setupProductAutocomplete(item, idx) {
+    const si = item.querySelector('.product-search-input');
+    const pi = item.querySelector(`input[name="items-${idx}-unit_price"]`);
+    const ni = item.querySelector(`#id_items-${idx}-item_name`);
+    const ps = item.querySelector(`select[name="items-${idx}-product"]`);
+    const res = item.querySelector('.product-results');
+    const pv = document.getElementById(`product-image-preview-container-${idx}`);
+    if (!si) return;
+    let to, q = '';
+    si.addEventListener('input', function() {
+        clearTimeout(to); q = this.value.trim();
+        if (q.length < 2) { res.classList.remove('show'); return; }
+        res.textContent = ''; const loading = document.createElement('div'); loading.className = 'autocomplete-item'; loading.textContent = 'جاري البحث...'; res.appendChild(loading); res.classList.add('show');
+        to = setTimeout(() => {
+            fetch(`/invoice/search-products/?q=${encodeURIComponent(q)}`).then(r => r.json()).then(d => {
+                if (q !== si.value.trim()) return; res.textContent = '';
+                if (!d.results || !d.results.length) { const noRes = document.createElement('div'); noRes.className = 'autocomplete-item text-muted'; noRes.textContent = 'لا توجد نتائج'; res.appendChild(noRes); return; }
+                d.results.forEach(p => {
+                    const used = window.usedProductIds.has(parseInt(p.id));
+                    const el = document.createElement('div'); el.className = 'autocomplete-item';
+                    if (used) el.style.backgroundColor = '#f8d7da';
+                    if (p.image_url) {
+                        const imgEl = document.createElement('img'); imgEl.src = p.image_url; imgEl.style.cssText = 'width:30px;height:30px;object-fit:cover;border-radius:4px;'; el.appendChild(imgEl);
                     } else {
-                        imageHtml = `<i class="fas fa-box" style="width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; background: #e0f7fa; border-radius: 4px;"></i>`;
+                        const iconEl = document.createElement('i'); iconEl.className = 'fas fa-box'; iconEl.style.cssText = 'width:30px;height:30px;display:flex;align-items:center;justify-content:center;background:#e0f7fa;border-radius:4px;'; el.appendChild(iconEl);
                     }
-                    
-                    itemDiv.innerHTML = `
-                        ${imageHtml}
-                        <div>
-                            <div><strong>${prod.text}</strong> ${isUsed ? '<span style="color: red;">(مستخدم)</span>' : ''}</div>
-                            <small>${prod.price || 0} ر.س</small>
-                        </div>
-                    `;
-                    itemDiv.addEventListener('click', () => {
-                        if (isUsed) { showErrorMessage('هذه المادة مستخدمة مسبقاً في هذه الفاتورة'); return; }
-                        searchInput.value = prod.text;
-                        if (productSelect) {
-                            productSelect.innerHTML = `<option value="${prod.id}" selected>${prod.text}</option>`;
-                        }
-                        if (priceInput) priceInput.value = prod.price || 0;
-                        if (itemNameInput) itemNameInput.value = prod.text;
-                        
-                        if (previewContainer && prod.image_url) {
-                            previewContainer.innerHTML = `<img src="${prod.image_url}">`;
-                            previewContainer.classList.add('has-image');
-                        } else if (previewContainer) {
-                            previewContainer.innerHTML = `<i class="fas fa-camera"></i>`;
-                            previewContainer.classList.remove('has-image');
-                        }
-                        
-                        window.usedProductIds.add(parseInt(prod.id));
-                        updateItemCalculations(item);
-                        resultsContainer.classList.remove('show');
-                        searchInput.classList.remove('error-border');
-                        showSuccessMessage(`تم اختيار المنتج: ${prod.text}`);
+                    const infoDiv = document.createElement('div');
+                    const nameDiv = document.createElement('div');
+                    const strong = document.createElement('strong'); strong.textContent = p.text; nameDiv.appendChild(strong);
+                    if (used) { const usedSpan = document.createElement('span'); usedSpan.style.color = 'red'; usedSpan.textContent = ' (مستخدم)'; nameDiv.appendChild(usedSpan); }
+                    const small = document.createElement('small'); small.textContent = (p.price || 0) + ' ر.س';
+                    infoDiv.appendChild(nameDiv); infoDiv.appendChild(small);
+                    el.appendChild(infoDiv);
+                    el.addEventListener('click', () => {
+                        if (used) { showErrorMessage('هذه المادة مستخدمة مسبقاً'); return; }
+                        si.value = p.text;
+                        if (ps) { ps.textContent = ''; const opt = document.createElement('option'); opt.value = p.id; opt.selected = true; opt.textContent = p.text; ps.appendChild(opt); }
+                        if (pi) pi.value = p.price || 0;
+                        if (ni) ni.value = p.text;
+                        if (pv && p.image_url) { pv.textContent = ''; const img = document.createElement('img'); img.src = p.image_url; pv.appendChild(img); pv.classList.add('has-image'); }
+                        else if (pv) { pv.textContent = ''; const ic = document.createElement('i'); ic.className = 'fas fa-camera'; pv.appendChild(ic); pv.classList.remove('has-image'); }
+                        window.usedProductIds.add(parseInt(p.id)); updateItemCalculations(item); res.classList.remove('show'); si.classList.remove('error-border'); showSuccessMessage('تم اختيار المنتج: ' + p.text);
                     });
-                    resultsContainer.appendChild(itemDiv);
+                    res.appendChild(el);
                 });
             });
         }, 400);
     });
 }
 
-// ============================================
-// دوال إدارة البنود
-// ============================================
-function setupItemEvents(item, itemIndex) {
-    const qtyInput = item.querySelector('.quantity-input');
-    const priceInput = item.querySelector('.price-input');
-    const deleteBtn = item.querySelector('.delete-btn');
+function setupItemEvents(item, idx) {
+    const qi = item.querySelector('.quantity-input');
+    const pi = item.querySelector('.price-input');
+    const db = item.querySelector('.delete-btn');
+    if (qi) qi.addEventListener('input', function() {
+        updateItemCalculations(item);
+        const qty = parseInt(this.value) || 1;
+        const bc = window.barcodeData[idx] ? window.barcodeData[idx].filter(v => v && v.trim()).length : 0;
+        generateBarcodeFields(item, idx, Math.max(qty, bc));
+    });
+    if (pi) pi.addEventListener('input', () => updateItemCalculations(item));
     
-    if (qtyInput) {
-        qtyInput.addEventListener('input', function() {
-            updateItemCalculations(item);
-            const qty = parseInt(this.value) || 1;
-            generateBarcodeFields(item, itemIndex, qty);
-        });
-    }
-    if (priceInput) priceInput.addEventListener('input', () => updateItemCalculations(item));
-    if (deleteBtn) {
-        deleteBtn.addEventListener('click', () => {
-            const productHidden = item.querySelector('select[name$="-product"]');
-            if (productHidden && productHidden.value) window.usedProductIds.delete(parseInt(productHidden.value));
-            delete window.barcodeData[itemIndex];
-            delete window.barcodeStatusData[itemIndex];
-            document.querySelector(`.barcode-row[data-item-index="${itemIndex}"]`)?.remove();
-            item.remove();
-            updateTotalForms();
+    if (db) db.addEventListener('click', () => {
+        const deleteField = item.querySelector('input[name$="-DELETE"]');
+        const itemId = item.dataset.itemId;
+        
+        if (itemId && deleteField) {
+            deleteField.value = 'on';
+            item.classList.add('deleted-row');
+            const barcodeRow = document.querySelector(`.barcode-row[data-item-index="${idx}"]`);
+            if (barcodeRow) barcodeRow.style.display = 'none';
+            showSuccessMessage('تم تحديد البند للحذف (سيتم حذفه عند الحفظ)');
+        } else {
+            const ph = item.querySelector('select[name$="-product"]');
+            if (ph && ph.value) window.usedProductIds.delete(parseInt(ph.value));
+            delete window.barcodeData[idx]; delete window.barcodeStatusData[idx];
+            document.querySelector(`.barcode-row[data-item-index="${idx}"]`)?.remove();
+            item.remove(); 
+            updateTotalForms(); 
             updateItemsNumbers();
-            updateFinancialCalculations();
-        });
-    }
+        }
+        updateFinancialCalculations();
+        updateItemsCountInput();
+    });
 }
 
 function addNewItem() {
-    const tbody = document.getElementById('items-tbody');
-    const totalForms = document.getElementById('id_items-TOTAL_FORMS');
-    const formNum = parseInt(totalForms.value);
-    
-    const newRow = document.createElement('tr');
-    newRow.className = 'item-row';
-    newRow.setAttribute('data-item-index', formNum);
-    newRow.innerHTML = `
-        <td class="text-center fw-bold item-number">${formNum + 1}</td>
-        <td>
-            <div class="hidden-field">
-                <input type="hidden" name="items-${formNum}-id">
-                <select name="items-${formNum}-product" id="id_items-${formNum}-product"><option value="">---------</option></select>
-            </div>
-            <div class="product-search-container" data-item-index="${formNum}">
-                <input type="text" class="form-control product-search-input" placeholder="ابحث عن المادة..." autocomplete="off" data-item-index="${formNum}">
-                <div class="autocomplete-dropdown product-results" data-item-index="${formNum}"></div>
-            </div>
-            <input type="hidden" name="items-${formNum}-item_name" id="id_items-${formNum}-item_name" value="">
-        </td>
-        <td><input type="number" name="items-${formNum}-purchased_quantity" value="1" step="0.01" min="0.01" class="form-control quantity-input"></td>
-        <td><input type="number" name="items-${formNum}-unit_price" value="0" step="0.01" min="0" class="form-control price-input"></td>
-        <td><input type="text" class="form-control item-total" readonly value="0.00"></td>
-        <td><input type="text" name="items-${formNum}-notes" class="form-control"></td>
-        <td class="text-center">
-            <div class="image-input-container">
-                <div id="product-image-preview-container-${formNum}" class="image-preview" title="انقر لاختيار صورة المادة"><i class="fas fa-camera"></i></div>
-                <input type="file" name="items-${formNum}-product_image_upload" class="hidden-file-input product-image-input" accept="image/*" data-item-index="${formNum}">
-            </div>
-        </td>
-        <td class="text-center"><button type="button" class="delete-btn"><i class="fas fa-trash"></i></button></td>
-    `;
-    
-    const barcodeRow = document.createElement('tr');
-    barcodeRow.className = 'barcode-row';
-    barcodeRow.setAttribute('data-item-index', formNum);
-    barcodeRow.style.display = window.barcodesVisible ? 'table-row' : 'none';
-    barcodeRow.innerHTML = `<td colspan="8"><div class="barcode-field-container"><div class="barcode-fields-list" data-item-index="${formNum}"></div></div></td>`;
-    
-    tbody.appendChild(newRow);
-    tbody.appendChild(barcodeRow);
-    totalForms.value = formNum + 1;
-    
-    window.barcodeData[formNum] = [];
-    window.barcodeStatusData[formNum] = [];
-    
-    setupProductAutocomplete(newRow, formNum);
-    setupItemEvents(newRow, formNum);
-    updateItemCalculations(newRow);
-    generateBarcodeFields(newRow, formNum, 1);
+    const tb = document.getElementById('items-tbody');
+    const tf = document.getElementById('id_items-TOTAL_FORMS');
+    const n = parseInt(tf.value);
+    const row = document.createElement('tr'); row.className = 'item-row'; row.setAttribute('data-item-index', n); row.setAttribute('data-item-id', '');
+    row.innerHTML = '<td class="text-center fw-bold item-number">' + (n+1) + '</td><td><div class="hidden-field"><input type="hidden" name="items-' + n + '-id"><select name="items-' + n + '-product" id="id_items-' + n + '-product"><option value="">---------</option></select><input type="hidden" name="items-' + n + '-DELETE" value=""></div><div class="product-search-container" data-item-index="' + n + '"><input type="text" class="form-control product-search-input" placeholder="ابحث عن المادة..." autocomplete="off" data-item-index="' + n + '"><div class="autocomplete-dropdown product-results" data-item-index="' + n + '"></div></div><input type="hidden" name="items-' + n + '-item_name" id="id_items-' + n + '-item_name" value=""></td><td><input type="number" name="items-' + n + '-purchased_quantity" value="1" step="0.01" min="0.01" class="form-control quantity-input"></td><td><input type="number" name="items-' + n + '-unit_price" value="0" step="0.01" min="0" class="form-control price-input"></td><td><input type="text" class="form-control item-total" readonly value="0.00"></td><td><input type="text" name="items-' + n + '-notes" class="form-control"></td><td class="text-center"><div class="image-input-container"><div id="product-image-preview-container-' + n + '" class="image-preview" title="انقر لاختيار صورة"><i class="fas fa-camera"></i></div><input type="file" name="items-' + n + '-product_image_upload" class="hidden-file-input product-image-input" accept="image/*" data-item-index="' + n + '"></div></td><td class="text-center"><button type="button" class="delete-btn"><i class="fas fa-trash"></i></button></td>';
+    const br = document.createElement('tr'); br.className = 'barcode-row'; br.setAttribute('data-item-index', n);
+    br.style.display = window.barcodesVisible ? 'table-row' : 'none';
+    br.innerHTML = '<td colspan="8"><div class="barcode-field-container"><div class="barcode-fields-list" data-item-index="' + n + '"></div></div></td>';
+    tb.appendChild(row); tb.appendChild(br); tf.value = n + 1;
+    window.barcodeData[n] = []; window.barcodeStatusData[n] = [];
+    setupProductAutocomplete(row, n); setupItemEvents(row, n); updateItemCalculations(row); generateBarcodeFields(row, n, 1);
 }
 
-function updateTotalForms() { document.getElementById('id_items-TOTAL_FORMS').value = document.querySelectorAll('.item-row').length; }
-function updateItemsNumbers() { 
-    document.querySelectorAll('.item-row').forEach((r, i) => {
-        const numberCell = r.querySelector('td:first-child');
-        if (numberCell) numberCell.textContent = i + 1;
-    });
+function updateTotalForms() { 
+    const totalForms = document.getElementById('id_items-TOTAL_FORMS');
+    totalForms.value = document.querySelectorAll('.item-row').length;
 }
-function updateItemsCountInput() { const itemsCount = document.getElementById('items-count'); if (itemsCount) itemsCount.value = document.querySelectorAll('.item-row').length; }
+function updateItemsNumbers() { 
+    let counter = 1;
+    document.querySelectorAll('.item-row:not(.deleted-row)').forEach((r) => { 
+        const c = r.querySelector('td:first-child'); 
+        if (c) c.textContent = counter++; 
+    }); 
+}
+function updateItemsCountInput() { 
+    const c = document.getElementById('items-count'); 
+    if (c) c.value = document.querySelectorAll('.item-row:not(.deleted-row)').length; 
+}
 
 function setupItemsCountInput() {
     const inp = document.getElementById('items-count');
-    if (inp) {
-        inp.addEventListener('input', function() {
-            const target = parseInt(this.value) || 1;
-            const current = document.querySelectorAll('.item-row').length;
-            if (target > current) for (let i = 0; i < target - current; i++) addNewItem();
-            else if (target < current) {
-                const items = Array.from(document.querySelectorAll('.item-row')).reverse();
-                for (let i = 0; i < current - target; i++) {
-                    const item = items[i];
-                    const idx = item.dataset.itemIndex;
-                    const prod = item.querySelector('select[name$="-product"]');
-                    if (prod && prod.value) window.usedProductIds.delete(parseInt(prod.value));
-                    document.querySelector(`.barcode-row[data-item-index="${idx}"]`)?.remove();
-                    item.remove();
-                }
-                updateTotalForms();
-                updateItemsNumbers();
-            }
-            updateFinancialCalculations();
-        });
-    }
+    if (inp) inp.addEventListener('input', function() {
+        const t = parseInt(this.value) || 1, c = document.querySelectorAll('.item-row:not(.deleted-row)').length;
+        if (t > c) for (let i = 0; i < t - c; i++) addNewItem();
+        else if (t < c) {
+            Array.from(document.querySelectorAll('.item-row:not(.deleted-row)')).reverse().slice(0, c - t).forEach(item => {
+                const idx = item.dataset.itemIndex;
+                const p = item.querySelector('select[name$="-product"]');
+                if (p && p.value) window.usedProductIds.delete(parseInt(p.value));
+                document.querySelector(`.barcode-row[data-item-index="${idx}"]`)?.remove(); item.remove();
+            });
+            updateTotalForms(); updateItemsNumbers();
+        }
+        updateFinancialCalculations();
+    });
 }
 
 function setupImagePreviews() {
-    const invoiceFile = document.getElementById('id_purch_image');
-    const invoicePreview = document.getElementById('invoice-image-preview-container');
-    if (invoiceFile && invoicePreview) {
-        invoiceFile.style.display = 'none';
-        invoicePreview.addEventListener('click', () => invoiceFile.click());
-        invoiceFile.addEventListener('change', function(e) {
-            if (e.target.files[0]) { const reader = new FileReader(); reader.onload = e => { invoicePreview.innerHTML = `<img src="${e.target.result}" class="img-fluid">`; invoicePreview.classList.add('has-image'); }; reader.readAsDataURL(e.target.files[0]); }
-        });
-    }
+    const f = document.getElementById('id_purch_image'), p = document.getElementById('invoice-image-preview-container');
+    if (f && p) { f.style.display = 'none'; p.addEventListener('click', () => f.click()); f.addEventListener('change', function(e) { if (e.target.files[0]) { const r = new FileReader(); r.onload = ev => { p.textContent = ''; const img = document.createElement('img'); img.src = ev.target.result; img.className = 'img-fluid'; p.appendChild(img); p.classList.add('has-image'); }; r.readAsDataURL(e.target.files[0]); } }); }
     document.querySelectorAll('.item-row').forEach(item => {
-        const idx = item.dataset.itemIndex;
-        const preview = document.getElementById(`product-image-preview-container-${idx}`);
-        const input = item.querySelector('.product-image-input');
-        if (preview && input) {
-            input.style.display = 'none';
-            preview.addEventListener('click', () => input.click());
-            input.addEventListener('change', function(e) {
-                if (e.target.files[0]) { const reader = new FileReader(); reader.onload = e => { preview.innerHTML = `<img src="${e.target.result}">`; preview.classList.add('has-image'); }; reader.readAsDataURL(e.target.files[0]); }
-            });
-        }
+        const idx = item.dataset.itemIndex, pv = document.getElementById(`product-image-preview-container-${idx}`), inp = item.querySelector('.product-image-input');
+        if (pv && inp) { inp.style.display = 'none'; pv.addEventListener('click', () => inp.click()); inp.addEventListener('change', function(e) { if (e.target.files[0]) { const r = new FileReader(); r.onload = ev => { pv.textContent = ''; const img = document.createElement('img'); img.src = ev.target.result; pv.appendChild(img); pv.classList.add('has-image'); }; r.readAsDataURL(e.target.files[0]); } }); }
     });
 }
 
 function setupGlobalEvents() {
     document.getElementById('add-single-item')?.addEventListener('click', () => { addNewItem(); updateItemsCountInput(); });
-    document.getElementById('purch-form')?.addEventListener('submit', function(e) {
-        document.querySelectorAll('.item-row').forEach(row => {
-            const searchInput = row.querySelector('.product-search-input');
-            const itemNameInput = row.querySelector('input[name*="item_name"]');
-            if (searchInput && itemNameInput && searchInput.value.trim()) {
-                itemNameInput.value = searchInput.value.trim();
-            }
+    document.getElementById('purch-form')?.addEventListener('submit', function() {
+        document.querySelectorAll('.quantity-input, .price-input').forEach(inp => {
+            if (inp.value !== '') { inp.value = parseFloat(inp.value).toFixed(2); }
         });
-        
-        const overlay = document.getElementById('loading-overlay');
-        if (overlay) overlay.classList.add('show');
+        document.querySelectorAll('.item-row').forEach(row => {
+            const si = row.querySelector('.product-search-input'), ni = row.querySelector('input[name*="item_name"]');
+            if (si && ni && si.value.trim()) ni.value = si.value.trim();
+        });
+        const o = document.getElementById('loading-overlay'); if (o) o.classList.add('show');
     });
 }
 
-// ============================================
-// التهيئة الرئيسية - معدلة
-// ============================================
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 بدء تهيئة صفحة تعديل الفاتورة...');
-    
-    // حفظ القيمة الأصلية لـ paid_amount من قاعدة البيانات
-    const originalPaidAmount = document.getElementById('id_paid_amount')?.value;
-    if (originalPaidAmount) {
-        window.paidAmountModified = true;  // منع التعبئة التلقائية للقيمة الأصلية
-    }
-    
-    document.querySelectorAll('.item-row').forEach((item, idx) => {
-        const itemIndex = item.dataset.itemIndex;
-        if (!window.barcodeData[itemIndex]) window.barcodeData[itemIndex] = [];
-        const barcodeRow = document.querySelector(`.barcode-row[data-item-index="${itemIndex}"]`);
-        if (barcodeRow) {
-            barcodeRow.querySelectorAll('.barcode-input').forEach((input, i) => {
-                if (input.value) window.barcodeData[itemIndex][i] = input.value;
-            });
-        }
-        const productHidden = item.querySelector('select[name$="-product"]');
-        if (productHidden && productHidden.value) window.usedProductIds.add(parseInt(productHidden.value));
-        setupProductAutocomplete(item, itemIndex);
-        setupItemEvents(item, itemIndex);
-        updateItemCalculations(item);
+    if (document.getElementById('id_paid_amount')?.value) window.paidAmountModified = true;
+    document.querySelectorAll('.item-row').forEach(item => {
+        const idx = item.dataset.itemIndex;
+        if (!window.barcodeData[idx]) window.barcodeData[idx] = [];
+        const br = document.querySelector(`.barcode-row[data-item-index="${idx}"]`);
+        if (br) br.querySelectorAll('.barcode-input').forEach((inp, i) => { if (inp.value) window.barcodeData[idx][i] = inp.value; });
+        const ph = item.querySelector('select[name$="-product"]');
+        if (ph && ph.value) window.usedProductIds.add(parseInt(ph.value));
+        setupProductAutocomplete(item, idx); setupItemEvents(item, idx); updateItemCalculations(item);
         const qty = parseInt(item.querySelector('.quantity-input')?.value) || 1;
-        generateBarcodeFields(item, itemIndex, qty);
+        generateBarcodeFields(item, idx, qty);
     });
-    
-    setupSupplierAutocomplete();
-    setupImagePreviews();
-    setupItemsCountInput();
-    setupBarcodeToggle();
-    setupGlobalEvents();
-    setupPaymentMethodEvent();
-    
-    document.querySelectorAll('.financial-row input').forEach(input => input.addEventListener('input', updateFinancialCalculations));
-    updateFinancialCalculations();
-    updateItemsCountInput();
-    
-    // بعد اكتمال التهيئة، نسمح بالتعبئة التلقائية للبنود الجديدة فقط
-    setTimeout(() => {
-        window.isInitialLoad = false;
-        window.initializationComplete = true;
-        console.log('✅ اكتملت تهيئة الصفحة');
-        updateFinancialCalculations();
-    }, 500);
+    setupSupplierAutocomplete(); setupImagePreviews(); setupItemsCountInput(); setupBarcodeToggle(); setupGlobalEvents(); setupPaymentMethodEvent();
+    document.querySelectorAll('.financial-row input').forEach(i => i.addEventListener('input', updateFinancialCalculations));
+    updateFinancialCalculations(); updateItemsCountInput();
+    setTimeout(() => { window.isInitialLoad = false; updateFinancialCalculations(); }, 500);
 });
 </script>
 {% endblock %}

@@ -238,16 +238,97 @@ logger = logging.getLogger(__name__)
 #               فواتير الشراء                  #
 # ===============================================
 
+
 @login_required
 def purch_list(request):
-    """عرض قائمة فواتير الشراء"""
-    purchases = Purch.objects.all().order_by('-purch_date')
+    """عرض قائمة فواتير الشراء مع فرز وترقيم صفحات"""
+    from django.db.models import Sum, Avg, Count, Q
+    from django.core.paginator import Paginator
+    
+    # === فلترة المستخدم ليرى فواتيره فقط ===
+    queryset = Purch.objects.filter(created_by=request.user).select_related(
+        'purch_supplier', 'purch_status', 'purch_currency', 'purch_payment_method'
+    ).order_by('-date_created')
+    
+    # === البحث الموحد (رقم فاتورة + اسم المورد + رقم فاتورة المورد) ===
+    q = request.GET.get('q', '').strip()
+    if q:
+        queryset = queryset.filter(
+            Q(uniqueId__icontains=q) |
+            Q(purch_supplier__first_name__icontains=q) |
+            Q(purch_supplier__last_name__icontains=q) |
+            Q(purch_supplier__username__icontains=q) |
+            Q(supplier_invoice_number__icontains=q)
+        ).distinct()
+    
+    # === فلترة التواريخ ===
+    date_from = request.GET.get('date_from', '')
+    date_to = request.GET.get('date_to', '')
+    if date_from:
+        queryset = queryset.filter(purch_date__gte=date_from)
+    if date_to:
+        queryset = queryset.filter(purch_date__lte=date_to)
+    
+    # === فلترة الحالة ===
+    status = request.GET.get('status', '')
+    if status == 'paid':
+        queryset = queryset.filter(is_paid=True)
+    elif status == 'unpaid':
+        queryset = queryset.filter(is_paid=False, paid_amount=0)
+    elif status == 'partial':
+        queryset = queryset.filter(is_paid=False, paid_amount__gt=0)
+    
+    # === فلترة المورد ===
+    supplier = request.GET.get('supplier', '')
+    if supplier:
+        queryset = queryset.filter(
+            Q(purch_supplier__first_name__icontains=supplier) |
+            Q(purch_supplier__last_name__icontains=supplier) |
+            Q(purch_supplier__username__icontains=supplier)
+        ).distinct()
+    
+    # === الإحصائيات (قبل الترقيم) ===
+    stats = queryset.aggregate(
+        total_amount=Sum('purch_final_total'),
+        total_paid=Sum('paid_amount'),
+        total_due=Sum('balance_due'),
+        avg_invoice=Avg('purch_final_total'),
+        count=Count('id')
+    )
+    
+    # === الفرز ===
+    sort_field = request.GET.get('sort', '')
+    sort_order = request.GET.get('order', '')
+    
+    sort_map = {
+        'uniqueId': 'uniqueId',
+        'purch_date': 'purch_date',
+        'supplier': 'purch_supplier__username',
+        'purch_final_total': 'purch_final_total',
+        'paid_amount': 'paid_amount',
+        'balance_due': 'balance_due',
+        'is_paid': 'is_paid',
+    }
+    
+    if sort_field in sort_map:
+        field = sort_map[sort_field]
+        if sort_order == 'desc':
+            field = f'-{field}'
+        queryset = queryset.order_by(field)
+    
+    # === الترقيم - 20 عنصر لكل صفحة ===
+    paginator = Paginator(queryset, 20)
+    page_number = request.GET.get('page', 1)
+    purchases = paginator.get_page(page_number)
+    
     return render(request, 'invoice/purchase/purch_list.html', {
         'purchases': purchases,
+        'total_purchases_amount': stats['total_amount'] or 0,
+        'total_paid_amount': stats['total_paid'] or 0,
+        'total_due_amount': stats['total_due'] or 0,
+        'average_invoice': stats['avg_invoice'] or 0,
         'title': _('فواتير الشراء')
     })
-
-
 
 @login_required
 def purch_create(request):
@@ -2019,6 +2100,8 @@ def cash_dashboard(request):
     return render(request, 'invoice/cashbox/cash_dashboard.html', context)
 
 
+from django.utils.dateparse import parse_date  # تأكد من وجود هذا السطر في أعلى الملف
+
 @login_required
 def cash_transaction_list(request):
     """عرض قائمة حركات الصندوق"""
@@ -2028,37 +2111,30 @@ def cash_transaction_list(request):
     end_date = request.GET.get('end_date', '')
     search_query = request.GET.get('q', '')
 
-    if not start_date and not end_date:
-        today = timezone.now().date()
-        start_date = today.strftime('%Y-%m-%d')
-        end_date = today.strftime('%Y-%m-%d')
-
     transactions_qs = CashTransaction.objects.all().order_by('-transaction_date')
     
     if transaction_type:
         transactions_qs = transactions_qs.filter(transaction_type=transaction_type)
     
+    # === طريقة آمنة 100% لفلترة التواريخ بدون أخطاء ===
     if start_date:
-        transactions_qs = transactions_qs.filter(transaction_date__date__gte=start_date)
-    
+        parsed_start = parse_date(start_date)
+        if parsed_start:
+            transactions_qs = transactions_qs.filter(transaction_date__date__gte=parsed_start)
+            
     if end_date:
-        transactions_qs = transactions_qs.filter(transaction_date__date__lte=end_date)
+        parsed_end = parse_date(end_date)
+        if parsed_end:
+            transactions_qs = transactions_qs.filter(transaction_date__date__lte=parsed_end)
 
     if search_query:
-        transactions_qs = transactions_qs.filter(
-            Q(notes__icontains=search_query) | Q(transaction_type__icontains=search_query)
-        )
+        transactions_qs = transactions_qs.filter(notes__icontains=search_query)
 
     if 'export' in request.GET and request.GET.get('export') == 'csv':
         response = HttpResponse(content_type='text/csv')
         response['Content-Disposition'] = 'attachment; filename="cash_transactions.csv"'
-        
         writer = csv.writer(response)
-        writer.writerow([
-            'التاريخ', 'النوع', 'المبلغ الداخل', 
-            'المبلغ الخارج', 'البيان', 'بواسطة'
-        ])
-
+        writer.writerow(['التاريخ', 'النوع', 'المبلغ الداخل', 'المبلغ الخارج', 'البيان', 'بواسطة'])
         for trans in transactions_qs:
             writer.writerow([
                 trans.transaction_date.strftime('%Y-%m-%d %H:%M:%S'),
@@ -2093,6 +2169,7 @@ def cash_transaction_list(request):
     
     context = {
         'title': 'حركات الصندوق',
+        'CashTransaction': CashTransaction,
         'page_obj': page_obj,
         'total_in': total_in,
         'total_out': total_out,

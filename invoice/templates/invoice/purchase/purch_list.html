@@ -174,22 +174,9 @@ body {
 }
 
 @keyframes radarPulse {
-    0% {
-        width: 38px;
-        height: 38px;
-        opacity: 0.7;
-        border-width: 2.5px;
-    }
-    50% {
-        opacity: 0.35;
-        border-width: 1.5px;
-    }
-    100% {
-        width: 70px;
-        height: 70px;
-        opacity: 0;
-        border-width: 0.5px;
-    }
+    0% { width: 38px; height: 38px; opacity: 0.7; border-width: 2.5px; }
+    50% { opacity: 0.35; border-width: 1.5px; }
+    100% { width: 70px; height: 70px; opacity: 0; border-width: 0.5px; }
 }
 
 .search-pulse-wrapper.pulse-off::before,
@@ -353,6 +340,7 @@ body {
     font-size: 0.75rem;
     font-weight: 700;
     color: white;
+    white-space: nowrap;
 }
 
 .sort-header {
@@ -360,13 +348,28 @@ body {
     user-select: none;
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.4rem;
     color: white;
     text-decoration: none;
+    transition: opacity 0.2s;
 }
 
-.sort-header i {
-    transition: transform 0.2s;
+.sort-header:hover {
+    opacity: 0.85;
+}
+
+.sort-header .sort-icon {
+    font-size: 0.65rem;
+    opacity: 0.5;
+    transition: all 0.2s;
+    width: 14px;
+    text-align: center;
+}
+
+.sort-header.sort-active .sort-icon {
+    opacity: 1;
+    color: #ffffff;
+    text-shadow: 0 0 4px rgba(0,0,0,0.3);
 }
 
 .table td {
@@ -504,6 +507,15 @@ body {
     pointer-events: none;
 }
 
+.page-dots {
+    display: flex;
+    align-items: center;
+    padding: 0 0.25rem;
+    color: var(--aqua-4);
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+}
+
 @media (max-width: 1200px) {
     .stats-grid { grid-template-columns: repeat(2, 1fr); }
 }
@@ -514,11 +526,9 @@ body {
     .page-header, .table-header, .pagination-footer { flex-direction: column; align-items: flex-start; }
     .filter-form { flex-direction: column; }
     .form-group { width: 100%; }
+    .page-nav { flex-wrap: wrap; }
 }
 
-/* =============================================
-   ميزة الطباعة - إضافة فقط
-   ============================================= */
 .print-fab {
     position: fixed;
     bottom: 1.5rem;
@@ -552,259 +562,103 @@ body {
     box-shadow: 0 20px 60px rgba(0,0,0,0.2);
     animation: modalIn 0.25s ease;
 }
-@keyframes modalIn {
-    from { transform: translateY(20px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
-}
+@keyframes modalIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 .modal-close {
-    width: 30px;
-    height: 30px;
-    border: none;
-    background: var(--aqua-1);
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 1rem;
-    color: var(--text-dark);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
+    width: 30px; height: 30px; border: none; background: var(--aqua-1);
+    border-radius: 4px; cursor: pointer; font-size: 1rem; color: var(--text-dark);
+    display: flex; align-items: center; justify-content: center; transition: all 0.2s;
 }
 .modal-close:hover { background: var(--aqua-2); }
-
 .section-title {
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: var(--text-dark);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin: 1rem 0 0.5rem;
-    padding-bottom: 0.3rem;
-    border-bottom: 1px dashed var(--aqua-2);
+    font-size: 0.75rem; font-weight: 700; color: var(--text-dark);
+    text-transform: uppercase; letter-spacing: 0.5px;
+    margin: 1rem 0 0.5rem; padding-bottom: 0.3rem; border-bottom: 1px dashed var(--aqua-2);
 }
 .section-title:first-child { margin-top: 0; }
-
 .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.25rem; }
 .field-check {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.3rem 0.4rem;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: background 0.15s;
-    font-size: 0.8rem;
+    display: flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.4rem;
+    border-radius: 4px; cursor: pointer; transition: background 0.15s; font-size: 0.8rem;
 }
 .field-check:hover { background: var(--aqua-1); }
-.field-check input[type="checkbox"] {
-    width: 15px; height: 15px; accent-color: var(--aqua-4); cursor: pointer;
-}
-
-.btn-group {
-    display: flex; gap: 0.25rem; background: var(--aqua-1); padding: 0.2rem; border-radius: 4px;
-}
+.field-check input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--aqua-4); cursor: pointer; }
+.btn-group { display: flex; gap: 0.25rem; background: var(--aqua-1); padding: 0.2rem; border-radius: 4px; }
 .btn-opt {
     flex: 1; padding: 0.3rem; border: none; background: transparent; border-radius: 4px;
     font-size: 0.78rem; cursor: pointer; font-family: 'Tajawal', sans-serif;
     color: var(--aqua-4); font-weight: 600; transition: all 0.2s; text-align: center;
 }
-.btn-opt.active {
-    background: white; color: var(--text-dark); box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-}
-
+.btn-opt.active { background: white; color: var(--text-dark); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
 .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 0.4rem 0; }
 .toggle-row label { font-size: 0.8rem; }
 .toggle-switch { position: relative; width: 38px; height: 20px; cursor: pointer; }
 .toggle-switch input { display: none; }
-.toggle-slider {
-    position: absolute; inset: 0; background: var(--aqua-2); border-radius: 10px; transition: 0.2s;
-}
-.toggle-slider::before {
-    content: ''; position: absolute; width: 16px; height: 16px; background: white;
-    border-radius: 50%; top: 2px; left: 2px; transition: 0.2s;
-}
+.toggle-slider { position: absolute; inset: 0; background: var(--aqua-2); border-radius: 10px; transition: 0.2s; }
+.toggle-slider::before { content: ''; position: absolute; width: 16px; height: 16px; background: white; border-radius: 50%; top: 2px; left: 2px; transition: 0.2s; }
 .toggle-switch input:checked + .toggle-slider { background: var(--aqua-4); }
 .toggle-switch input:checked + .toggle-slider::before { left: 20px; }
-
 .header-footer-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-.hf-input-group label {
-    display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-dark); margin-bottom: 0.2rem;
-}
-.hf-input-group input, .hf-input-group textarea {
-    width: 100%; border: 1px solid var(--aqua-2); border-radius: 4px; padding: 0.35rem 0.5rem;
-    font-size: 0.8rem; font-family: 'Tajawal', sans-serif; transition: all 0.2s;
-}
-.hf-input-group input:focus, .hf-input-group textarea:focus {
-    border-color: var(--aqua-3); box-shadow: 0 0 0 2px rgba(77, 208, 225, 0.2); outline: none;
-}
-.hf-preview-box {
-    background: var(--aqua-1); border: 1px dashed var(--aqua-2); border-radius: 4px;
-    padding: 0.5rem; text-align: center; margin-top: 0.3rem; cursor: pointer;
-}
+.hf-input-group label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-dark); margin-bottom: 0.2rem; }
+.hf-input-group input, .hf-input-group textarea { width: 100%; border: 1px solid var(--aqua-2); border-radius: 4px; padding: 0.35rem 0.5rem; font-size: 0.8rem; font-family: 'Tajawal', sans-serif; transition: all 0.2s; }
+.hf-input-group input:focus, .hf-input-group textarea:focus { border-color: var(--aqua-3); box-shadow: 0 0 0 2px rgba(77, 208, 225, 0.2); outline: none; }
+.hf-preview-box { background: var(--aqua-1); border: 1px dashed var(--aqua-2); border-radius: 4px; padding: 0.5rem; text-align: center; margin-top: 0.3rem; cursor: pointer; }
 .hf-preview-box img { max-height: 50px; border-radius: 4px; }
-
 .toast {
     position: fixed; bottom: 1.5rem; left: 50%; transform: translateX(-50%) translateY(80px);
     background: var(--text-dark); color: white; padding: 0.6rem 1.2rem; border-radius: 4px;
     font-size: 0.82rem; z-index: 99999; opacity: 0; transition: all 0.3s; pointer-events: none;
 }
 .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+@media (max-width: 768px) { .field-grid { grid-template-columns: 1fr; } .header-footer-inputs { grid-template-columns: 1fr; } }
 
-@media (max-width: 768px) {
-    .field-grid { grid-template-columns: 1fr; }
-    .header-footer-inputs { grid-template-columns: 1fr; }
-}
-
-/* =============================================
-   أنماط الطباعة
-   ============================================= */
 @media print {
-    * {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-    }
-
-    body {
-        background: white !important;
-        font-size: 10pt !important;
-        color: #000 !important;
-        padding: 0 !important;
-    }
-
+    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    body { background: white !important; font-size: 10pt !important; color: #000 !important; padding: 0 !important; }
     .no-print { display: none !important; }
-
-    .container {
-        max-width: 100% !important;
-        padding: 0 !important;
-    }
-
-    .page-header {
-        margin-bottom: 1rem !important;
-        page-break-after: avoid;
-    }
-    .header-title h1 {
-        font-size: 14pt !important;
-        -webkit-text-fill-color: var(--text-dark) !important;
-    }
-
-    .stats-grid {
-        grid-template-columns: repeat(4, 1fr) !important;
-        gap: 8pt !important;
-        margin-bottom: 1rem !important;
-        page-break-inside: avoid;
-    }
-    .stat-card {
-        border-radius: 0 !important;
-        box-shadow: none !important;
-        border: 0.5pt solid #ddd !important;
-        padding: 6pt !important;
-    }
+    .container { max-width: 100% !important; padding: 0 !important; }
+    .page-header { margin-bottom: 1rem !important; page-break-after: avoid; }
+    .header-title h1 { font-size: 14pt !important; -webkit-text-fill-color: var(--text-dark) !important; }
+    .stats-grid { grid-template-columns: repeat(4, 1fr) !important; gap: 8pt !important; margin-bottom: 1rem !important; page-break-inside: avoid; }
+    .stat-card { border-radius: 0 !important; box-shadow: none !important; border: 0.5pt solid #ddd !important; padding: 6pt !important; }
     .stat-info h3 { font-size: 7pt !important; margin-bottom: 2pt !important; }
     .stat-info .value { font-size: 11pt !important; }
     .stat-icon { display: none !important; }
-
-    .table-card {
-        border-radius: 0 !important;
-        box-shadow: none !important;
-        border: 0.5pt solid #ddd !important;
-    }
-
-    .table-header {
-        padding: 4pt 8pt !important;
-        border-bottom: 0.5pt solid #ddd !important;
-    }
+    .table-card { border-radius: 0 !important; box-shadow: none !important; border: 0.5pt solid #ddd !important; }
+    .table-header { padding: 4pt 8pt !important; border-bottom: 0.5pt solid #ddd !important; }
     .table-title { font-size: 9pt !important; }
     .table-meta { font-size: 7pt !important; }
-
     .table { min-width: 0 !important; font-size: 8pt !important; }
-    .table th {
-        padding: 4pt 6pt !important;
-        font-size: 7pt !important;
-    }
-    .table td {
-        padding: 3pt 6pt !important;
-        border-bottom: 0.3pt solid #eee !important;
-    }
+    .table th { padding: 4pt 6pt !important; font-size: 7pt !important; }
+    .table td { padding: 3pt 6pt !important; border-bottom: 0.3pt solid #eee !important; }
     .table tbody tr:hover { background: transparent !important; }
-
     .user-avatar { display: none !important; }
     .amount-text { font-size: 8pt !important; }
     .badge { font-size: 6pt !important; padding: 1pt 4pt !important; }
-
-    /* === الهيدر المتكرر === */
-    .print-header-area {
-        display: block !important;
-        position: fixed !important;
-        top: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        padding: 4pt 10mm !important;
-        border-bottom: 1pt solid #333 !important;
-        background: white !important;
-        z-index: 10000 !important;
-        text-align: center !important;
-    }
+    .sort-header .sort-icon { display: none !important; }
+    .print-header-area { display: block !important; position: fixed !important; top: 0 !important; left: 0 !important; right: 0 !important; padding: 4pt 10mm !important; border-bottom: 1pt solid #333 !important; background: white !important; z-index: 10000 !important; text-align: center !important; }
     .print-header-area .ph-logo { max-height: 25pt !important; vertical-align: middle !important; }
-    .print-header-area .ph-company {
-        font-size: 10pt !important; font-weight: 700 !important; color: #000 !important;
-        display: inline-block !important; vertical-align: middle !important;
-    }
+    .print-header-area .ph-company { font-size: 10pt !important; font-weight: 700 !important; color: #000 !important; display: inline-block !important; vertical-align: middle !important; }
     .print-header-area .ph-details { font-size: 7pt !important; color: #444 !important; }
-
-    /* === الفوتر المتكرر === */
-    .print-footer-area {
-        display: block !important;
-        position: fixed !important;
-        bottom: 0 !important;
-        left: 0 !important;
-        right: 0 !important;
-        padding: 3pt 10mm !important;
-        border-top: 0.5pt solid #999 !important;
-        background: white !important;
-        z-index: 10000 !important;
-        text-align: center !important;
-        font-size: 7pt !important;
-        color: #666 !important;
-    }
-
-    .list-print-area {
-        padding-top: 35pt !important;
-        padding-bottom: 20pt !important;
-    }
-
+    .print-footer-area { display: block !important; position: fixed !important; bottom: 0 !important; left: 0 !important; right: 0 !important; padding: 3pt 10mm !important; border-top: 0.5pt solid #999 !important; background: white !important; z-index: 10000 !important; text-align: center !important; font-size: 7pt !important; color: #666 !important; }
+    .list-print-area { padding-top: 35pt !important; padding-bottom: 20pt !important; }
     [data-print-hidden="true"] { display: none !important; }
-
     .table tr { page-break-inside: avoid; }
-
-    /* أوضاع الورق */
     .print-a5 .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
     .print-a5 .table { font-size: 7pt !important; }
-    .print-a5 .table th { font-size: 6pt !important; }
-    .print-a5 .header-title h1 { font-size: 11pt !important; }
     .print-thermal .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
     .print-thermal .table { font-size: 6.5pt !important; }
-    .print-thermal .table th { font-size: 5.5pt !important; }
-    .print-thermal .header-title h1 { font-size: 9pt !important; }
-    .print-thermal .stat-info .value { font-size: 9pt !important; }
-
-    /* بدون ألوان */
     .print-grayscale * { filter: grayscale(100%) !important; }
-    /* بدون خطوط */
     .print-no-lines .table td, .print-no-lines .table th { border: none !important; }
     .print-no-lines .table-card { border: none !important; }
     .print-no-lines .stat-card { border: none !important; }
 }
-
-@page {
-    margin: 10mm;
-}
+@page { margin: 10mm; }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="container">
 
-    <!-- هيدر الطباعة المتكرر -->
     <div class="print-header-area no-print" id="printHeaderArea" style="display:none;">
         <table style="width:100%; border-collapse:collapse;">
             <tr>
@@ -821,12 +675,10 @@ body {
         </table>
     </div>
 
-    <!-- فوتر الطباعة المتكرر -->
     <div class="print-footer-area no-print" id="printFooterArea" style="display:none;">
         <span id="phFooterText"></span>
     </div>
 
-    <!-- زر الطباعة -->
     <button class="btn btn-primary print-fab no-print" id="openPrintModalBtn">
         <i class="fas fa-print"></i> طباعة القائمة
     </button>
@@ -842,15 +694,6 @@ body {
                     <button type="button" class="btn btn-outline btn-icon" id="toggleFiltersBtn" aria-label="فتح البحث">
                         <i class="fas fa-search"></i>
                     </button>
-                </div>
-                <div class="dropdown">
-                    <button class="btn btn-outline" data-bs-toggle="dropdown">
-                        <i class="fas fa-file-export"></i> تصدير
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="#"><i class="fas fa-file-excel me-2"></i>Excel</a></li>
-                        <li><a class="dropdown-item" href="#"><i class="fas fa-file-pdf me-2"></i>PDF</a></li>
-                    </ul>
                 </div>
                 <a href="{% url 'invoice:purch_create' %}" class="btn btn-primary">
                     <i class="fas fa-plus"></i> فاتورة جديدة
@@ -883,7 +726,7 @@ body {
                 </div>
                 <div class="form-group">
                     <label>بحث سريع</label>
-                    <input type="text" name="q" class="form-control" placeholder="رقم الفاتورة..." value="{{ request.GET.q }}">
+                    <input type="text" name="q" class="form-control" placeholder="رقم الفاتورة أو اسم المورد..." value="{{ request.GET.q }}">
                 </div>
                 <div class="filter-actions">
                     <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> بحث</button>
@@ -896,28 +739,28 @@ body {
             <div class="stat-card">
                 <div class="stat-info">
                     <h3>إجمالي المشتريات</h3>
-                    <div class="value">{{ total_purchases_amount|default:"0"|floatformat:0 }} <small>ر.س</small></div>
+                    <div class="value">{{ total_purchases_amount|floatformat:0 }} <small>ر.س</small></div>
                 </div>
                 <div class="stat-icon"><i class="fas fa-wallet"></i></div>
             </div>
             <div class="stat-card">
                 <div class="stat-info">
                     <h3>إجمالي المدفوع</h3>
-                    <div class="value">{{ total_paid_amount|default:"0"|floatformat:0 }} <small>ر.س</small></div>
+                    <div class="value">{{ total_paid_amount|floatformat:0 }} <small>ر.س</small></div>
                 </div>
                 <div class="stat-icon"><i class="fas fa-hand-holding-usd"></i></div>
             </div>
             <div class="stat-card">
                 <div class="stat-info">
                     <h3>المبالغ المستحقة</h3>
-                    <div class="value">{{ total_due_amount|default:"0"|floatformat:0 }} <small>ر.س</small></div>
+                    <div class="value">{{ total_due_amount|floatformat:0 }} <small>ر.س</small></div>
                 </div>
                 <div class="stat-icon"><i class="fas fa-hourglass-half"></i></div>
             </div>
             <div class="stat-card">
                 <div class="stat-info">
                     <h3>متوسط قيمة الفاتورة</h3>
-                    <div class="value">{{ average_invoice|default:"0"|floatformat:0 }} <small>ر.س</small></div>
+                    <div class="value">{{ average_invoice|floatformat:0 }} <small>ر.س</small></div>
                 </div>
                 <div class="stat-icon"><i class="fas fa-chart-pie"></i></div>
             </div>
@@ -927,20 +770,24 @@ body {
             <div class="table-header">
                 <div class="table-title"><i class="fas fa-list-ul"></i> سجل الفواتير</div>
                 <div class="table-meta">
-                    عرض <strong>{{ purchases.start_index }}</strong> - <strong>{{ purchases.end_index }}</strong> من <strong>{{ purchases.paginator.count }}</strong>
+                    {% if purchases.paginator.count > 0 %}
+                    عرض <strong>{{ purchases.start_index }}</strong> - <strong>{{ purchases.end_index }}</strong> من أصل <strong>{{ purchases.paginator.count }}</strong>
+                    {% else %}
+                    لا توجد فواتير
+                    {% endif %}
                 </div>
             </div>
             <div class="table-responsive">
                 <table class="table">
                     <thead>
                         <tr>
-                            <th>رقم الفاتورة</th>
-                            <th><span class="sort-header" data-sort="purch_date">التاريخ <i class="fas fa-sort"></i></span></th>
-                            <th>المورد</th>
-                            <th><span class="sort-header" data-sort="purch_final_total">الإجمالي <i class="fas fa-sort"></i></span></th>
-                            <th>المدفوع</th>
-                            <th>المتبقي</th>
-                            <th>الحالة</th>
+                            <th><span class="sort-header {% if request.GET.sort == 'uniqueId' %}sort-active{% endif %}" data-sort="uniqueId">رقم الفاتورة <span class="sort-icon"><i class="fas fa-sort{% if request.GET.sort == 'uniqueId' %}{% if request.GET.order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i></span></span></th>
+                            <th><span class="sort-header {% if request.GET.sort == 'purch_date' %}sort-active{% endif %}" data-sort="purch_date">التاريخ <span class="sort-icon"><i class="fas fa-sort{% if request.GET.sort == 'purch_date' %}{% if request.GET.order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i></span></span></th>
+                            <th><span class="sort-header {% if request.GET.sort == 'supplier' %}sort-active{% endif %}" data-sort="supplier">المورد <span class="sort-icon"><i class="fas fa-sort{% if request.GET.sort == 'supplier' %}{% if request.GET.order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i></span></span></th>
+                            <th><span class="sort-header {% if request.GET.sort == 'purch_final_total' %}sort-active{% endif %}" data-sort="purch_final_total">الإجمالي <span class="sort-icon"><i class="fas fa-sort{% if request.GET.sort == 'purch_final_total' %}{% if request.GET.order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i></span></span></th>
+                            <th><span class="sort-header {% if request.GET.sort == 'paid_amount' %}sort-active{% endif %}" data-sort="paid_amount">المدفوع <span class="sort-icon"><i class="fas fa-sort{% if request.GET.sort == 'paid_amount' %}{% if request.GET.order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i></span></span></th>
+                            <th><span class="sort-header {% if request.GET.sort == 'balance_due' %}sort-active{% endif %}" data-sort="balance_due">المتبقي <span class="sort-icon"><i class="fas fa-sort{% if request.GET.sort == 'balance_due' %}{% if request.GET.order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i></span></span></th>
+                            <th><span class="sort-header {% if request.GET.sort == 'is_paid' %}sort-active{% endif %}" data-sort="is_paid">الحالة <span class="sort-icon"><i class="fas fa-sort{% if request.GET.sort == 'is_paid' %}{% if request.GET.order == 'asc' %}-up{% else %}-down{% endif %}{% endif %}"></i></span></span></th>
                             <th class="no-print">إجراءات</th>
                         </tr>
                     </thead>
@@ -1003,8 +850,8 @@ body {
                 </div>
                 <div class="page-nav">
                     {% if purchases.has_previous %}
-                        <a href="?page=1{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.order %}&order={{ request.GET.order }}{% endif %}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.supplier %}&supplier={{ request.GET.supplier }}{% endif %}" class="page-link" title="الأولى"><i class="fas fa-angle-double-right"></i></a>
-                        <a href="?page={{ purchases.previous_page_number }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.order %}&order={{ request.GET.order }}{% endif %}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.supplier %}&supplier={{ request.GET.supplier }}{% endif %}" class="page-link" title="السابقة"><i class="fas fa-angle-right"></i></a>
+                        <a href="?page=1&sort={{ request.GET.sort }}&order={{ request.GET.order }}&q={{ request.GET.q }}&status={{ request.GET.status }}&date_from={{ request.GET.date_from }}&date_to={{ request.GET.date_to }}&supplier={{ request.GET.supplier }}" class="page-link" title="الأولى"><i class="fas fa-angle-double-right"></i></a>
+                        <a href="?page={{ purchases.previous_page_number }}&sort={{ request.GET.sort }}&order={{ request.GET.order }}&q={{ request.GET.q }}&status={{ request.GET.status }}&date_from={{ request.GET.date_from }}&date_to={{ request.GET.date_to }}&supplier={{ request.GET.supplier }}" class="page-link" title="السابقة"><i class="fas fa-angle-right"></i></a>
                     {% else %}
                         <span class="page-link disabled"><i class="fas fa-angle-double-right"></i></span>
                         <span class="page-link disabled"><i class="fas fa-angle-right"></i></span>
@@ -1013,14 +860,20 @@ body {
                     {% for i in purchases.paginator.page_range %}
                         {% if purchases.number == i %}
                             <span class="page-link active">{{ i }}</span>
-                        {% elif i > purchases.number|add:'-3' and i < purchases.number|add:'3' %}
-                            <a href="?page={{ i }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.order %}&order={{ request.GET.order }}{% endif %}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.supplier %}&supplier={{ request.GET.supplier }}{% endif %}" class="page-link">{{ i }}</a>
+                        {% elif i == 1 or i == purchases.paginator.num_pages or i == purchases.number|add:'-1' or i == purchases.number|add:'1' %}
+                            <a href="?page={{ i }}&sort={{ request.GET.sort }}&order={{ request.GET.order }}&q={{ request.GET.q }}&status={{ request.GET.status }}&date_from={{ request.GET.date_from }}&date_to={{ request.GET.date_to }}&supplier={{ request.GET.supplier }}" class="page-link">{{ i }}</a>
+                        {% elif i <= 3 or i >= purchases.paginator.num_pages|add:'-2' or i > purchases.number|add:'-3' and i < purchases.number|add:'3' %}
+                            <a href="?page={{ i }}&sort={{ request.GET.sort }}&order={{ request.GET.order }}&q={{ request.GET.q }}&status={{ request.GET.status }}&date_from={{ request.GET.date_from }}&date_to={{ request.GET.date_to }}&supplier={{ request.GET.supplier }}" class="page-link">{{ i }}</a>
+                        {% elif i == purchases.number|add:'-2' %}
+                            <span class="page-dots">...</span>
+                        {% elif i == purchases.number|add:'2' %}
+                            <span class="page-dots">...</span>
                         {% endif %}
                     {% endfor %}
 
                     {% if purchases.has_next %}
-                        <a href="?page={{ purchases.next_page_number }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.order %}&order={{ request.GET.order }}{% endif %}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.supplier %}&supplier={{ request.GET.supplier }}{% endif %}" class="page-link" title="التالية"><i class="fas fa-angle-left"></i></a>
-                        <a href="?page={{ purchases.paginator.num_pages }}{% if request.GET.sort %}&sort={{ request.GET.sort }}{% endif %}{% if request.GET.order %}&order={{ request.GET.order }}{% endif %}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.date_from %}&date_from={{ request.GET.date_from }}{% endif %}{% if request.GET.date_to %}&date_to={{ request.GET.date_to }}{% endif %}{% if request.GET.supplier %}&supplier={{ request.GET.supplier }}{% endif %}" class="page-link" title="الأخيرة"><i class="fas fa-angle-double-left"></i></a>
+                        <a href="?page={{ purchases.next_page_number }}&sort={{ request.GET.sort }}&order={{ request.GET.order }}&q={{ request.GET.q }}&status={{ request.GET.status }}&date_from={{ request.GET.date_from }}&date_to={{ request.GET.date_to }}&supplier={{ request.GET.supplier }}" class="page-link" title="التالية"><i class="fas fa-angle-left"></i></a>
+                        <a href="?page={{ purchases.paginator.num_pages }}&sort={{ request.GET.sort }}&order={{ request.GET.order }}&q={{ request.GET.q }}&status={{ request.GET.status }}&date_from={{ request.GET.date_from }}&date_to={{ request.GET.date_to }}&supplier={{ request.GET.supplier }}" class="page-link" title="الأخيرة"><i class="fas fa-angle-double-left"></i></a>
                     {% else %}
                         <span class="page-link disabled"><i class="fas fa-angle-left"></i></span>
                         <span class="page-link disabled"><i class="fas fa-angle-double-left"></i></span>
@@ -1032,21 +885,15 @@ body {
     </div>
 </div>
 
-<!-- نافذة إعدادات الطباعة -->
 <div class="modal-overlay" id="printModal">
     <div class="modal-box">
         <div class="page-header" style="margin-bottom:0; padding:0.6rem 1rem; background:linear-gradient(135deg, var(--aqua-4) 0%, #006064 100%); border-radius:8px 8px 0 0;">
-            <div class="header-title" style="margin:0;">
-                <h1 style="font-size:1rem;"><i class="fas fa-cog"></i> إعدادات الطباعة</h1>
-            </div>
+            <div class="header-title" style="margin:0;"><h1 style="font-size:1rem;"><i class="fas fa-cog"></i> إعدادات الطباعة</h1></div>
             <button class="modal-close" id="closeModalBtn">&times;</button>
         </div>
-
         <div style="padding:1rem;">
             <div class="section-title">هيدر وفوتر صفحة الطباعة</div>
-            <p style="font-size:0.75rem; color:var(--aqua-4); margin-bottom:0.5rem;">
-                <i class="fas fa-info-circle"></i> تظهر فقط عند الطباعة وتتكرر مع كل صفحة.
-            </p>
+            <p style="font-size:0.75rem; color:var(--aqua-4); margin-bottom:0.5rem;"><i class="fas fa-info-circle"></i> تظهر فقط عند الطباعة وتتكرر مع كل صفحة.</p>
             <div class="header-footer-inputs">
                 <div class="hf-input-group">
                     <label><i class="fas fa-image"></i> شعار الشركة</label>
@@ -1069,7 +916,6 @@ body {
                     <input type="text" id="footerTextInput" placeholder="قائمة فواتير الشراء - نظام الأزوردي">
                 </div>
             </div>
-
             <div class="section-title">حجم الورق</div>
             <div class="btn-group" id="paperSizeGroup">
                 <button class="btn-opt active" data-value="a4">A4</button>
@@ -1077,20 +923,17 @@ body {
                 <button class="btn-opt" data-value="thermal">حراري 80mm</button>
                 <button class="btn-opt" data-value="half-a4">نصف A4</button>
             </div>
-
             <div class="section-title">الهوامش</div>
             <div class="btn-group" id="marginGroup">
                 <button class="btn-opt" data-value="minimal">أقل</button>
                 <button class="btn-opt active" data-value="normal">عادي</button>
                 <button class="btn-opt" data-value="wide">واسع</button>
             </div>
-
             <div class="section-title">أقسام القائمة</div>
             <div class="field-grid">
                 <label class="field-check"><input type="checkbox" checked data-target="sec-stats"> بطاقات الإحصائيات</label>
                 <label class="field-check"><input type="checkbox" checked data-target="sec-table"> جدول الفواتير</label>
             </div>
-
             <div class="section-title">خيارات إضافية</div>
             <div class="toggle-row">
                 <label>طباعة بالألوان</label>
@@ -1101,15 +944,12 @@ body {
                 <label class="toggle-switch"><input type="checkbox" id="printLines" checked><span class="toggle-slider"></span></label>
             </div>
         </div>
-
         <div style="display:flex; justify-content:space-between; align-items:center; padding:0.6rem 1rem; border-top:1px solid var(--aqua-1);">
             <div style="display:flex; gap:0.35rem;">
                 <button class="btn btn-outline" id="selectAllBtn"><i class="fas fa-check-double"></i> تحديد الكل</button>
                 <button class="btn btn-outline" id="deselectAllBtn"><i class="fas fa-times"></i> إلغاء الكل</button>
             </div>
-            <button class="btn btn-primary" id="executePrintBtn" style="padding:0.45rem 1.5rem;">
-                <i class="fas fa-print"></i> طباعة الآن
-            </button>
+            <button class="btn btn-primary" id="executePrintBtn" style="padding:0.45rem 1.5rem;"><i class="fas fa-print"></i> طباعة الآن</button>
         </div>
     </div>
 </div>
@@ -1129,119 +969,73 @@ body {
     if (toggleBtn && filtersCard && pulseWrapper) {
         toggleBtn.addEventListener('click', function() {
             var isOpen = filtersCard.classList.toggle('show');
-            if (isOpen) {
-                pulseWrapper.classList.add('pulse-off');
-            } else {
-                pulseWrapper.classList.remove('pulse-off');
-            }
+            if (isOpen) pulseWrapper.classList.add('pulse-off');
+            else pulseWrapper.classList.remove('pulse-off');
         });
     }
 
-    var sortHeaders = document.querySelectorAll('.sort-header');
-
-    if (sortHeaders.length > 0) {
-        var currentUrl = new URL(window.location.href);
-        var currentSort = currentUrl.searchParams.get('sort');
-        var currentOrder = currentUrl.searchParams.get('order');
-
-        sortHeaders.forEach(function(header) {
-            var field = header.getAttribute('data-sort');
-            var icon = header.querySelector('i');
-
-            if (field === currentSort && icon) {
-                if (currentOrder === 'asc') {
-                    icon.className = 'fas fa-sort-up';
-                } else if (currentOrder === 'desc') {
-                    icon.className = 'fas fa-sort-down';
-                }
-            }
-
-            header.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-
-                var sortField = this.getAttribute('data-sort');
-                var url = new URL(window.location.href);
-                var existingSort = url.searchParams.get('sort');
-                var existingOrder = url.searchParams.get('order');
-
-                var newOrder = 'asc';
-                if (existingSort === sortField) {
-                    newOrder = (existingOrder === 'asc') ? 'desc' : 'asc';
-                }
-
-                url.searchParams.set('sort', sortField);
-                url.searchParams.set('order', newOrder);
-                url.searchParams.set('page', '1');
-
-                window.location.href = url.toString();
-            });
-        });
-    }
-
-    var dateFrom = document.querySelector('input[name="date_from"]');
-    var dateTo = document.querySelector('input[name="date_to"]');
-    var statusSelect = document.querySelector('select[name="status"]');
-    var supplierInput = document.querySelector('input[name="supplier"]');
-    var quickSearch = document.querySelector('input[name="q"]');
-
+    // فتح الفلاتر تلقائياً إذا كانت هناك فلاتر نشطة
     var hasActiveFilters = false;
-    if (dateFrom && dateFrom.value) hasActiveFilters = true;
-    if (dateTo && dateTo.value) hasActiveFilters = true;
-    if (statusSelect && statusSelect.value) hasActiveFilters = true;
-    if (supplierInput && supplierInput.value) hasActiveFilters = true;
-    if (quickSearch && quickSearch.value) hasActiveFilters = true;
-
+    ['date_from', 'date_to', 'status', 'supplier', 'q'].forEach(function(name) {
+        var el = document.querySelector('[name="' + name + '"]');
+        if (el && el.value) hasActiveFilters = true;
+    });
     if (hasActiveFilters && filtersCard && pulseWrapper) {
         filtersCard.classList.add('show');
         pulseWrapper.classList.add('pulse-off');
     }
 
-    var clickableRows = document.querySelectorAll('.clickable-row');
-
-    clickableRows.forEach(function(row) {
-        row.addEventListener('click', function(e) {
-            if (e.target.closest('.actions-cell')) {
-                return;
+    // === الفرز ===
+    document.querySelectorAll('.sort-header').forEach(function(header) {
+        header.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            var sortField = this.getAttribute('data-sort');
+            var url = new URL(window.location.href);
+            var existingSort = url.searchParams.get('sort');
+            var existingOrder = url.searchParams.get('order');
+            
+            var newOrder = 'asc';
+            if (existingSort === sortField) {
+                newOrder = (existingOrder === 'asc') ? 'desc' : 'asc';
             }
-            var href = this.getAttribute('data-href');
-            if (href) {
-                window.location.href = href;
-            }
+            
+            url.searchParams.set('sort', sortField);
+            url.searchParams.set('order', newOrder);
+            url.searchParams.set('page', '1');
+            
+            window.location.href = url.toString();
         });
     });
 
-    var deleteBtns = document.querySelectorAll('.delete-confirm');
+    // الصفوف القابلة للنقر
+    document.querySelectorAll('.clickable-row').forEach(function(row) {
+        row.addEventListener('click', function(e) {
+            if (e.target.closest('.actions-cell')) return;
+            var href = this.getAttribute('data-href');
+            if (href) window.location.href = href;
+        });
+    });
 
-    deleteBtns.forEach(function(btn) {
+    // تأكيد الحذف
+    document.querySelectorAll('.delete-confirm').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
-            if (!confirm('هل أنت متأكد من حذف هذه الفاتورة؟')) {
-                e.preventDefault();
-            }
+            if (!confirm('هل أنت متأكد من حذف هذه الفاتورة؟')) e.preventDefault();
         });
     });
 
-    /* ============================================
-       ميزة الطباعة - إضافة فقط
-       ============================================ */
+    // === الطباعة ===
     var printState = { paperSize: 'a4', marginSize: 'normal', logoDataUrl: '' };
     var printModal = document.getElementById('printModal');
     var listPrintArea = document.getElementById('listPrintArea');
     var toastEl = document.getElementById('toast');
 
-    document.getElementById('openPrintModalBtn').addEventListener('click', function() {
-        printModal.classList.add('active');
-    });
-    document.getElementById('closeModalBtn').addEventListener('click', function() {
-        printModal.classList.remove('active');
-    });
-    printModal.addEventListener('click', function(e) {
-        if (e.target === printModal) printModal.classList.remove('active');
-    });
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') printModal.classList.remove('active');
-    });
+    document.getElementById('openPrintModalBtn').addEventListener('click', function() { printModal.classList.add('active'); });
+    document.getElementById('closeModalBtn').addEventListener('click', function() { printModal.classList.remove('active'); });
+    printModal.addEventListener('click', function(e) { if (e.target === printModal) printModal.classList.remove('active'); });
+    document.addEventListener('keydown', function(e) { if (e.key === 'Escape') printModal.classList.remove('active'); });
 
     document.querySelectorAll('.btn-group').forEach(function(group) {
         group.querySelectorAll('.btn-opt').forEach(function(btn) {
@@ -1287,66 +1081,39 @@ body {
     }
 
     function changePrintPage() {
-        var styleId = 'dynamic-page-style';
-        var existingStyle = document.getElementById(styleId);
+        var existingStyle = document.getElementById('dynamic-page-style');
         if (existingStyle) existingStyle.remove();
-
-        var style = document.createElement('style');
-        style.id = styleId;
-        var marginValue = '10mm';
-        var sizeValue = '';
-
+        var style = document.createElement('style'); style.id = 'dynamic-page-style';
+        var marginValue = '10mm', sizeValue = '';
         if (printState.marginSize === 'minimal') marginValue = '3mm';
         else if (printState.marginSize === 'normal') marginValue = '8mm';
         else if (printState.marginSize === 'wide') marginValue = '15mm';
-
-        if (printState.paperSize === 'thermal') {
-            marginValue = '2mm';
-            sizeValue = 'size: 80mm auto;';
-        } else if (printState.paperSize === 'half-a4') {
-            marginValue = '8mm';
-            sizeValue = 'size: A4 landscape;';
-        }
-
+        if (printState.paperSize === 'thermal') { marginValue = '2mm'; sizeValue = 'size: 80mm auto;'; }
+        else if (printState.paperSize === 'half-a4') { marginValue = '8mm'; sizeValue = 'size: A4 landscape;'; }
         style.textContent = '@page { margin: ' + marginValue + '; ' + sizeValue + ' }';
         document.head.appendChild(style);
     }
 
     function hideBaseElements() {
-        var selectors = [
-            'nav', 'aside', '.navbar', '.sidebar', '.side-bar',
-            '.breadcrumb', '.breadcrumbs', 'footer', '.footer',
-            '.top-bar', '.topbar', '.header-area', '[role="navigation"]'
-        ];
-        selectors.forEach(function(sel) {
+        ['nav', 'aside', '.navbar', '.sidebar', '.side-bar', '.breadcrumb', '.breadcrumbs', 'footer', '.footer', '.top-bar', '.topbar', '.header-area', '[role="navigation"]'].forEach(function(sel) {
             document.querySelectorAll(sel).forEach(function(el) {
                 if (el.closest('.list-print-area') || el.closest('.modal-overlay') || el.closest('.print-fab')) return;
                 el.style.display = 'none';
             });
         });
     }
-
     function showBaseElements() {
-        var selectors = [
-            'nav', 'aside', '.navbar', '.sidebar', '.side-bar',
-            '.breadcrumb', '.breadcrumbs', 'footer', '.footer',
-            '.top-bar', '.topbar', '.header-area', '[role="navigation"]'
-        ];
-        selectors.forEach(function(sel) {
-            document.querySelectorAll(sel).forEach(function(el) {
-                el.style.display = '';
-            });
+        ['nav', 'aside', '.navbar', '.sidebar', '.side-bar', '.breadcrumb', '.breadcrumbs', 'footer', '.footer', '.top-bar', '.topbar', '.header-area', '[role="navigation"]'].forEach(function(sel) {
+            document.querySelectorAll(sel).forEach(function(el) { el.style.display = ''; });
         });
     }
 
     document.getElementById('executePrintBtn').addEventListener('click', function() {
         var headerArea = document.getElementById('printHeaderArea');
         var footerArea = document.getElementById('printFooterArea');
-
         document.getElementById('phCompanyName').textContent = document.getElementById('companyNameInput').value || 'اسم الشركة';
         document.getElementById('phCompanyDetails').textContent = document.getElementById('companyDetailsInput').value || '';
         document.getElementById('phFooterText').textContent = document.getElementById('footerTextInput').value || '';
-
         if (printState.logoDataUrl) {
             document.getElementById('phLogoImg').src = printState.logoDataUrl;
             document.getElementById('phLogoImg').style.display = 'block';
@@ -1355,66 +1122,36 @@ body {
             document.getElementById('phLogoImg').style.display = 'none';
             document.getElementById('phLogoPlaceholder').style.display = 'inline';
         }
-
-        headerArea.style.display = 'block';
-        headerArea.classList.remove('no-print');
-        footerArea.style.display = 'block';
-        footerArea.classList.remove('no-print');
-
+        headerArea.style.display = 'block'; headerArea.classList.remove('no-print');
+        footerArea.style.display = 'block'; footerArea.classList.remove('no-print');
         printModal.querySelectorAll('input[type="checkbox"][data-target]').forEach(function(cb) {
-            var target = cb.dataset.target;
-            document.querySelectorAll('[data-print-field="' + target + '"]').forEach(function(el) {
+            document.querySelectorAll('[data-print-field="' + cb.dataset.target + '"]').forEach(function(el) {
                 el.setAttribute('data-print-hidden', cb.checked ? 'false' : 'true');
             });
         });
-
-        if (!document.getElementById('printColors').checked) {
-            listPrintArea.classList.add('print-grayscale');
-        } else {
-            listPrintArea.classList.remove('print-grayscale');
-        }
-        if (!document.getElementById('printLines').checked) {
-            listPrintArea.classList.add('print-no-lines');
-        } else {
-            listPrintArea.classList.remove('print-no-lines');
-        }
-
+        if (!document.getElementById('printColors').checked) listPrintArea.classList.add('print-grayscale');
+        else listPrintArea.classList.remove('print-grayscale');
+        if (!document.getElementById('printLines').checked) listPrintArea.classList.add('print-no-lines');
+        else listPrintArea.classList.remove('print-no-lines');
         listPrintArea.classList.remove('print-a4', 'print-a5', 'print-thermal', 'print-half-a4');
         listPrintArea.classList.add('print-' + printState.paperSize);
-
-        changePrintPage();
-        hideBaseElements();
-
-        printModal.classList.remove('active');
-        showToast('جارٍ الطباعة...');
-
+        changePrintPage(); hideBaseElements();
+        printModal.classList.remove('active'); showToast('جارٍ الطباعة...');
         setTimeout(function() {
             window.print();
-
             setTimeout(function() {
-                headerArea.style.display = 'none';
-                headerArea.classList.add('no-print');
-                footerArea.style.display = 'none';
-                footerArea.classList.add('no-print');
-
-                document.querySelectorAll('[data-print-field]').forEach(function(el) {
-                    el.removeAttribute('data-print-hidden');
-                });
+                headerArea.style.display = 'none'; headerArea.classList.add('no-print');
+                footerArea.style.display = 'none'; footerArea.classList.add('no-print');
+                document.querySelectorAll('[data-print-field]').forEach(function(el) { el.removeAttribute('data-print-hidden'); });
                 listPrintArea.classList.remove('print-a4', 'print-a5', 'print-thermal', 'print-half-a4', 'print-grayscale', 'print-no-lines');
-
                 showBaseElements();
-
-                var dynStyle = document.getElementById('dynamic-page-style');
-                if (dynStyle) dynStyle.remove();
+                var dynStyle = document.getElementById('dynamic-page-style'); if (dynStyle) dynStyle.remove();
             }, 500);
         }, 300);
     });
 
     document.addEventListener('keydown', function(e) {
-        if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
-            e.preventDefault();
-            printModal.classList.add('active');
-        }
+        if ((e.ctrlKey || e.metaKey) && e.key === 'p') { e.preventDefault(); printModal.classList.add('active'); }
     });
 })();
 </script>

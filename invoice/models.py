@@ -40,6 +40,7 @@ User = get_user_model()
 #  الصندوق
 # ===============================================
 
+
 class CashTransaction(models.Model):
     """نموذج لتسجيل جميع حركات الصندوق"""
     TRANSACTION_TYPES = (

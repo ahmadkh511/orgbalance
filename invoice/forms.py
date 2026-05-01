@@ -36,13 +36,10 @@ from .models import (
 )
 
 
-
-#       جداول مساعدة 
-
-
 #================================================
 #  الصندوق
 # ===============================================
+
 
 class CashTransactionForm(forms.ModelForm):
     class Meta:
@@ -86,6 +83,7 @@ class CashTransactionForm(forms.ModelForm):
             if amount_in > 0:
                 raise forms.ValidationError("لا يمكن إدخال مبلغ داخلي في عملية السحب أو المصروفات.")
         return cleaned_data
+
 
 #================================================
 #    اعدادات الايمل 

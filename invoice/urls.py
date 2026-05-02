@@ -199,5 +199,8 @@ urlpatterns = [
     path('api/add-announcement/', views.api_add_announcement, name='api_add_announcement'),
     path('api/delete-announcement/<int:ann_id>/', views.api_delete_announcement, name='api_delete_announcement'),
     path('api/update-feature/<int:feature_id>/', views.api_update_feature, name='api_update_feature'),
+
+
+    path('get-product-barcodes/<int:product_id>/', views.get_product_barcodes, name='get_product_barcodes'),
 ]
 

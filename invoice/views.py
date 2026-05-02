@@ -4011,6 +4011,7 @@ class PriceTypeDeleteView(LoginRequiredMixin, DeleteView):
         return super().delete(request, *args, **kwargs)
 
 
+
 @login_required
 def get_product_barcodes(request, product_id):
     """

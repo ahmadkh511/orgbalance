@@ -77,6 +77,11 @@ body {
   box-shadow: 0 0 0 2px rgba(77, 208, 225, 0.2);
 }
 
+.form-control.is-invalid {
+  border-color: #dc3545;
+  box-shadow: 0 0 0 0.15rem rgba(220, 53, 69, 0.25);
+}
+
 /* الأزرار */
 .btn {
   border-radius: 4px;
@@ -97,14 +102,29 @@ body {
 .btn-danger { background: linear-gradient(135deg, #e53935 0%, #b71c1c 100%); color: white; }
 .required-field::after { content: " *"; color: #d32f2f; }
 
+.success-message, .error-message-backend {
+  padding: 0.6rem 1rem;
+  border-radius: 4px;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+  display: none;
+}
+
 .success-message {
   background: linear-gradient(135deg, #00897b 0%, #00695c 100%);
   color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  margin: 0.5rem 0;
-  display: none;
-  font-size: 0.8rem;
+}
+
+.error-message-backend {
+  background: linear-gradient(135deg, #e53935 0%, #b71c1c 100%);
+  color: white;
+  border-left: 4px solid #ff5252;
+}
+
+.error-message-backend ul {
+  margin: 0;
+  padding-right: 1.2rem;
+  list-style-type: disc;
 }
 
 /* ============================================
@@ -307,15 +327,13 @@ body {
   flex-direction: column;
 }
 
-/* تصحيح موضع القائمة المنسدلة */
 .autocomplete-dropdown {
   position: absolute;
   top: 100%;
-  right: 0; /* تم تغيير left إلى right للتناسب مع RTL */
+  right: 0;
   min-width: 300px;
   width: max-content;
   max-width: 500px;
-  
   background: white;
   border: 1px solid var(--aqua-3);
   border-radius: 0 0 4px 4px;
@@ -427,6 +445,7 @@ body {
    ============================================ */
 .form-actions { display: flex; gap: 0.75rem; margin-top: 1rem; }
 .btn-success, .btn-secondary { padding: 0.4rem 1rem; font-size: 0.85rem; }
+.btn-success:disabled { opacity: 0.6; cursor: not-allowed; }
 
 /* ============================================
    [CSS-08] الحقول المخفية
@@ -461,13 +480,15 @@ body {
     <div class="loading-text"><i class="fas fa-save me-2"></i> جاري حفظ الفاتورة...</div>
 </div>
 
+<!-- حاوية رسائل النظام (للمعاملة الذرية) -->
+<div id="system-messages-container"></div>
+
 <div class="container-fluid py-2">
     <form method="post" enctype="multipart/form-data" id="sale-form">
         {% csrf_token %}
 
         <!-- معلومات الفاتورة الأساسية -->
         <div class="card">
-            <!-- الهيدر مع رقم الفاتورة -->
             <div class="card-header">
                 <i class="fas fa-info-circle"></i> 
                 معلومات الفاتورة بيع - رقم الفاتورة: <strong>{{ form.sale_invoice_number.value|default:"تلقائي" }}</strong>
@@ -490,11 +511,11 @@ body {
                         <label class="form-label"><i class="fas fa-phone"></i> الهاتف</label>
                         {{ form.sale_customer_phone }}
                     </div>
-                    <div class="col-md-4"> <!-- تم توسيع حقل العنوان لملء الفراغ -->
+                    <div class="col-md-4">
                         <label class="form-label"><i class="fas fa-map-marker-alt"></i> العنوان</label>
                         {{ form.sale_address }}
                     </div>
-                    <div class="col-md-3"> <!-- تم توسيع حقل التاريخ لملء الفراغ بدل رقم الفاتورة -->
+                    <div class="col-md-3">
                         <label class="form-label"><i class="fas fa-calendar-alt"></i> التاريخ</label>
                         {{ form.sale_date }}
                     </div>
@@ -711,7 +732,7 @@ body {
 
         <!-- أزرار الحفظ -->
         <div class="form-actions">
-            <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> حفظ الفاتورة</button>
+            <button type="submit" class="btn btn-success" id="save-btn"><i class="fas fa-save"></i> حفظ الفاتورة</button>
             <a href="{% url 'invoice:sale_list' %}" class="btn btn-secondary"><i class="fas fa-times"></i> إلغاء</a>
         </div>
     </form>
@@ -725,16 +746,27 @@ body {
 // ============================================
 window.barcodeData = {};
 window.barcodesVisible = false;
-window.productsCache = {};
-window.suppliersCache = {};
+window.productsCache = {}; // سيتم تنظيفه تلقائياً
+window.suppliersCache = {}; // سيتم تنظيفه تلقائياً
 window.isPaymentMethodCash = false;
 window.paidAmountModified = false;
 window.initializationComplete = false;
 window.usedProductIds = new Set();
+window.CACHE_MAX_SIZE = 50; // حد أقصى للكاش لمنع تسرب الذاكرة
 
 // ============================================
 // [JS-02] دوال مساعدة
 // ============================================
+
+// دالة جديدة: تنظيف الكاش تلقائياً لمنع ثقل المتصفح
+function addToCache(cacheObj, key, data) {
+    const keys = Object.keys(cacheObj);
+    if (keys.length >= window.CACHE_MAX_SIZE) {
+        delete cacheObj[keys[0]]; // حذف أقدم عنصر
+    }
+    cacheObj[key] = data;
+}
+
 function fetchCashBalance() {
     return fetch('/invoice/get-cash-balance/')
         .then(response => response.json())
@@ -777,7 +809,8 @@ function checkPaymentMethod(value) {
                     window.paidAmountModified = false;
                     updateRemainingAmount();
                 }
-            });
+            })
+            .catch(err => console.error('خطأ في جلب طريقة الدفع', err));
     } else {
         container.classList.remove('show');
         window.isPaymentMethodCash = false;
@@ -808,17 +841,31 @@ function updateRemainingAmount() {
     }
 }
 
+// دالة موحدة لمعاينة الصور (تم إصلاح التكرار)
+function setupImagePreview(previewEl, fileInputEl) {
+    if (!previewEl || !fileInputEl) return;
+    previewEl.addEventListener('click', () => fileInputEl.click());
+    fileInputEl.addEventListener('change', function() {
+        if(this.files && this.files[0]) {
+            const reader = new FileReader();
+            reader.onload = (e) => { 
+                previewEl.innerHTML = `<img src="${e.target.result}">`; 
+                previewEl.classList.add('has-image'); 
+            };
+            reader.readAsDataURL(this.files[0]);
+        }
+    });
+}
+
 function showSuccessMessage(message) {
     const old = document.querySelectorAll('.success-message');
     old.forEach(m => m.remove());
     const div = document.createElement('div');
     div.className = 'success-message';
     div.innerHTML = `<i class="fas fa-check-circle me-2"></i>${message}`;
-    const container = document.querySelector('.container-fluid');
-    if (container) {
-        container.insertBefore(div, container.firstChild);
-        setTimeout(() => { div.style.opacity = '0'; setTimeout(() => div.remove(), 500); }, 3000);
-    }
+    div.style.display = 'block';
+    document.getElementById('system-messages-container').appendChild(div);
+    setTimeout(() => { div.style.opacity = '0'; setTimeout(() => div.remove(), 500); }, 3000);
 }
 
 function showErrorMessage(message) {
@@ -830,6 +877,37 @@ function showErrorMessage(message) {
     div.innerHTML = `<i class="fas fa-exclamation-triangle me-2"></i>${message}`;
     document.body.appendChild(div);
     setTimeout(() => { div.style.opacity = '0'; setTimeout(() => div.remove(), 500); }, 4000);
+}
+
+// دالة جديدة: عرض أخطاء السيرفر دون إعادة تحميل الصفحة (قلب المعاملة الذرية)
+function showBackendErrors(htmlResponse) {
+    const container = document.getElementById('system-messages-container');
+    container.innerHTML = '';
+    
+    // استخراج رسائل Django messages من الـ HTML المرجع
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = htmlResponse;
+    
+    const messages = tempDiv.querySelectorAll('.alert, [role="alert"]');
+    if (messages.length > 0) {
+        messages.forEach(msg => {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message-backend';
+            errorDiv.style.display = 'block';
+            errorDiv.innerHTML = msg.innerHTML;
+            container.appendChild(errorDiv);
+        });
+    } else {
+        // في حال لم يجد رسائل محددة، يظهر الـ HTML كله للتعديل (نادر الحدوث)
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'error-message-backend';
+        errorDiv.style.display = 'block';
+        errorDiv.innerHTML = '<i class="fas fa-bug me-2"></i>حدث خطأ غير متوقع في البيانات المدخلة، يرجى مراجعة الحقول.';
+        container.appendChild(errorDiv);
+    }
+    
+    // التمرير لأعلى الصفحة لرؤية الخطأ
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 // ============================================
@@ -865,8 +943,16 @@ let remainingAmountConverter = {
         if(this.displayElement) this.displayElement.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
         fetch(`/invoice/api/convert-to-words/?amount=${this.currentRemainingAmount}&currency_id=${this.currentCurrencyId||''}`)
             .then(res => res.json())
-            .then(data => { if(data.success){ this.cache[key] = data; this.updateDisplay(data); } })
-            .catch(() => {})
+            .then(data => { 
+                if(data.success){
+                    addToCache(this.cache, key, data); // استخدام دالة الكاش الآمنة
+                    this.updateDisplay(data); 
+                }
+            })
+            .catch(err => {
+                console.error('خطأ في تحويل المبلغ كتابة', err);
+                if(this.displayElement) this.displayElement.innerHTML = 'خطأ في التحويل';
+            })
             .finally(() => this.isLoading = false);
     },
     updateDisplay(data) { if(this.displayElement) this.displayElement.innerHTML = `${data.amount_in_words} (${data.currency?.symbol || ''})`; }
@@ -880,7 +966,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeCustomerAutocomplete();
     initializeAllItems();
     setupGlobalEvents();
-    setupImagePreviews();
+    setupAllImagePreviews(); // استخدام الدالة الموحدة
     setupItemsCountInput();
     setupBarcodeToggle();
     setupFinancialCalculations();
@@ -894,7 +980,7 @@ document.addEventListener('DOMContentLoaded', function() {
     setTimeout(() => {
         updateItemsCountInput();
         window.initializationComplete = true;
-        console.log('✅ جاهز');
+        console.log('✅ جاهز - المعاملة الذرية مفعلة');
     }, 500);
 });
 
@@ -933,7 +1019,7 @@ function initializeCustomerAutocomplete() {
             fetch(`/invoice/search-suppliers/?q=${encodeURIComponent(query)}`) 
                 .then(res => res.json())
                 .then(data => {
-                    window.suppliersCache[query] = data;
+                    addToCache(window.suppliersCache, query, data); // استخدام دالة الكاش الآمنة
                     displayCustomerResults(data, query);
                 })
                 .catch(err => {
@@ -1018,7 +1104,7 @@ function initializeProductAutocomplete(searchInput, hiddenInput, priceInput, row
             fetch(`/invoice/search-products/?q=${encodeURIComponent(query)}`)
                 .then(res => res.json())
                 .then(data => {
-                    window.productsCache[query] = data;
+                    addToCache(window.productsCache, query, data); // استخدام دالة الكاش الآمنة
                     displayProductResults(data, query, resultsContainer, rowElement);
                 })
                 .catch(err => {
@@ -1114,10 +1200,11 @@ function displayProductResults(data, query, resultsContainer, rowElement) {
     });
 }
 
+// تم تحسين الدالة لتجنب مشاكل CORS والتحميل الثقيل
 async function createFileFromImageUrl(imageUrl, productName, itemIndex) {
     try {
-        const response = await fetch(imageUrl);
-        if (!response.ok) throw new Error(`فشل تحميل الصورة`);
+        const response = await fetch(imageUrl, { mode: 'cors' });
+        if (!response.ok) throw new Error(`فشل تحميل الصورة: ${response.status}`);
         const blob = await response.blob();
         const fileName = `auto_${productName.replace(/[^a-zA-Z0-9]/g, '_')}.jpg`;
         const file = new File([blob], fileName, { type: blob.type || 'image/jpeg' });
@@ -1129,7 +1216,8 @@ async function createFileFromImageUrl(imageUrl, productName, itemIndex) {
             fileInput.dispatchEvent(new Event('change', { bubbles: true }));
         }
     } catch (error) {
-        console.warn(`⚠️ تعذر تحميل الصورة تلقائياً:`, error.message);
+        // في حال فشل تحميل الصورة التلقائية (مثلاً بسبب CORS) لا نهبط الفاتورة، نتجاهل فقط
+        console.warn(`⚠️ تعذر تحميل الصورة تلقائياً: ${error.message} (سيتم المتابعة بدون صورة)`);
     }
 }
 
@@ -1194,18 +1282,11 @@ function addNewItem() {
         newRow 
     );
     
-    const preview = newRow.querySelector('.image-preview');
-    const fileInput = newRow.querySelector('.hidden-file-input');
-    if(preview && fileInput) {
-        preview.addEventListener('click', () => fileInput.click());
-        fileInput.addEventListener('change', function() {
-             if(this.files[0]) {
-                const reader = new FileReader();
-                reader.onload = (e) => { preview.innerHTML = `<img src="${e.target.result}">`; preview.classList.add('has-image'); };
-                reader.readAsDataURL(this.files[0]);
-            }
-        });
-    }
+    // استخدام الدالة الموحدة بدلاً من التكرار
+    setupImagePreview(
+        newRow.querySelector('.image-preview'), 
+        newRow.querySelector('.hidden-file-input')
+    );
     
     setupItemEvents(newRow);
     updateItemsCountInput();
@@ -1258,34 +1339,17 @@ function setupItemEvents(item) {
     }
 }
 
-function setupImagePreviews() {
+// تم استبدال الدالة المكررة بدالة موحدة
+function setupAllImagePreviews() {
     const mainImgInput = document.getElementById('id_sale_image');
     const mainPreview = document.getElementById('invoice-image-preview-container');
     if(mainImgInput && mainPreview) {
         mainImgInput.style.display = 'none';
-        mainPreview.addEventListener('click', () => mainImgInput.click());
-        mainImgInput.addEventListener('change', function() {
-            if(this.files[0]) {
-                const reader = new FileReader();
-                reader.onload = (e) => { mainPreview.innerHTML = `<img src="${e.target.result}">`; mainPreview.classList.add('has-image'); };
-                reader.readAsDataURL(this.files[0]);
-            }
-        });
+        setupImagePreview(mainPreview, mainImgInput);
     }
 
     document.querySelectorAll('.item-row').forEach(row => {
-        const preview = row.querySelector('.image-preview');
-        const input = row.querySelector('.hidden-file-input');
-        if(input && preview) {
-            preview.addEventListener('click', () => input.click());
-            input.addEventListener('change', function() {
-                if(this.files[0]) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => { preview.innerHTML = `<img src="${e.target.result}">`; preview.classList.add('has-image'); };
-                    reader.readAsDataURL(this.files[0]);
-                }
-            });
-        }
+        setupImagePreview(row.querySelector('.image-preview'), row.querySelector('.hidden-file-input'));
     });
 }
 
@@ -1309,7 +1373,7 @@ function fetchProductBarcodes(productId, rowElement) {
         .then(data => {
             if (data.barcodes && data.barcodes.length > 0) {
                 data.barcodes.forEach(bc => {
-                    const val = bc.barcode || bc.barcode_in;
+                    const val = bc.barcode_in || bc.barcode;
                     if(val) window.barcodeData[itemIndex].push(val);
                     
                     const div = document.createElement('div');
@@ -1340,7 +1404,8 @@ function fetchProductBarcodes(productId, rowElement) {
                 qtyInput.readOnly = true; 
                 if(withBarcodeInput) withBarcodeInput.value = data.barcodes.length;
                 
-                if(window.barcodesVisible) barcodeRow.style.display = 'table-row';
+                // الحل النهائي: إظهار الباركود دائماً عند اختيار مادة لها باركودات
+                barcodeRow.style.display = 'table-row'; 
             } else {
                 barcodeRow.style.display = 'none';
                 qtyInput.readOnly = false;
@@ -1352,7 +1417,7 @@ function fetchProductBarcodes(productId, rowElement) {
 }
 
 function hideAllBarcodes() { document.querySelectorAll('.barcode-row').forEach(r => r.style.display = 'none'); }
-function showAllBarcodes() { document.querySelectorAll('.barcode-row').forEach(r => r.style.display = 'table-row'); }
+function showAllBarcodes() { document.querySelectorAll('.barcode-row').forEach(r => { if(r.querySelector('.barcode-fields-list').children.length > 0) r.style.display = 'table-row'; }); }
 
 // ============================================
 // [JS-10] الحسابات المالية
@@ -1397,53 +1462,121 @@ function setupFinancialCalculations() {
 }
 
 // ============================================
-// [JS-11] أحداث عامة
+// [JS-11] المعاملة الذرية (AJAX Form Submit)
 // ============================================
 function setupGlobalEvents() {
     document.getElementById('add-single-item')?.addEventListener('click', addNewItem);
     
-    document.getElementById('sale-form')?.addEventListener('submit', function(e) {
-        let hasError = false;
-        document.querySelectorAll('.item-row').forEach(row => {
-            const nameField = row.querySelector('.item-name-field');
-            const searchInput = row.querySelector('.product-search-input');
-            if (searchInput && searchInput.value.trim()) {
-                if(nameField) nameField.value = searchInput.value.trim();
-                searchInput.classList.remove('is-invalid');
-            } else {
-                hasError = true;
-                searchInput?.classList.add('is-invalid');
-            }
-        });
+    const form = document.getElementById('sale-form');
+    if (form) {
+        form.addEventListener('submit', handleFormSubmit);
+    }
+}
 
-        if (hasError) {
-            e.preventDefault();
-            showErrorMessage('لا يمكن حفظ الفاتورة: يجب إدخال اسم المادة لجميع البنود.');
-            return;
+function handleFormSubmit(e) {
+    e.preventDefault(); // منع الإرسال التقليدي لضمان المعاملة الذرية
+    
+    const form = e.target;
+    const submitBtn = document.getElementById('save-btn');
+    const overlay = document.getElementById('loading-overlay');
+    const messagesContainer = document.getElementById('system-messages-container');
+    
+    // مسح أخطاء سابقة
+    messagesContainer.innerHTML = '';
+    document.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+
+    // 1. التحقق الأولي من الفراغات
+    let hasLocalError = false;
+    document.querySelectorAll('.item-row').forEach(row => {
+        const nameField = row.querySelector('.item-name-field');
+        const searchInput = row.querySelector('.product-search-input');
+        if (searchInput && searchInput.value.trim()) {
+            if(nameField) nameField.value = searchInput.value.trim();
+            searchInput.classList.remove('is-invalid');
+        } else {
+            hasLocalError = true;
+            searchInput?.classList.add('is-invalid');
         }
+    });
 
-        this.querySelectorAll('input.dynamic-barcode-field').forEach(el => el.remove());
-        Object.keys(window.barcodeData).forEach(idx => {
-            const barcodes = window.barcodeData[idx];
-            if (barcodes && barcodes.length > 0) {
-                barcodes.forEach(bc => {
-                    if(bc && bc.trim()) {
-                        const inp = document.createElement('input');
-                        inp.type = 'hidden';
-                        inp.name = `item_${idx}_barcodes`;
-                        inp.value = bc;
-                        inp.className = 'dynamic-barcode-field';
-                        this.appendChild(inp);
-                    }
-                });
+    if (hasLocalError) {
+        showErrorMessage('لا يمكن حفظ الفاتورة: يجب إدخال اسم المادة لجميع البنود.');
+        return;
+    }
+
+    // 2. إعداد الباركودات الديناميكية
+    form.querySelectorAll('input.dynamic-barcode-field').forEach(el => el.remove());
+    Object.keys(window.barcodeData).forEach(idx => {
+        const barcodes = window.barcodeData[idx];
+        if (barcodes && barcodes.length > 0) {
+            barcodes.forEach(bc => {
+                if(bc && bc.trim()) {
+                    const inp = document.createElement('input');
+                    inp.type = 'hidden';
+                    inp.name = `item_${idx}_barcodes`;
+                    inp.value = bc;
+                    inp.className = 'dynamic-barcode-field';
+                    form.appendChild(inp);
+                }
+            });
+        }
+    });
+
+    // 3. إرسال AJAX
+    submitBtn.disabled = true;
+    overlay.classList.add('show');
+
+    const formData = new FormData(form);
+
+    fetch(form.action, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest' // مهم جداً لكي يتعرف عليه Django
+        }
+    })
+    .then(response => {
+        // إذا كان النجاح يعني إعادة توجيه (Redirect)
+        if (response.redirected) {
+            window.location.href = response.url;
+            return null;
+        }
+        
+        // إذا كان الاستجابة JSON (نضع في اعتبارك لو عدلت الـ View ليرجع JSON)
+        return response.json().then(data => ({ isJson: true, data, status: response.status }));
+    })
+    .then(result => {
+        if (!result) return; // تم التوجيه بنجاح
+
+        if (result.isJson && result.status === 200) {
+            // نجاح مع إرجاع JSON (إن وجد)
+            if(result.data.redirect_url) {
+                window.location.href = result.data.redirect_url;
             }
-        });
-
-        const overlay = document.getElementById('loading-overlay');
-        if(overlay) overlay.classList.add('show');
+        } else {
+            // خطأ (سواء كان JSON أو HTML)
+            if (result.isJson) {
+                showBackendErrors(`<ul><li>${result.data.error || result.data.message || 'حدث خطأ في البيانات'}</li></ul>`);
+            } else {
+                // الـ View أرجع HTML (السلوك الافتراضي لـ Django عند الخطأ)
+                // سنستخرج الأخطاء منه ونعرضها دون تحميل الصفحة
+                response.text().then(htmlText => showBackendErrors(htmlText));
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showBackendErrors('<ul><li>خطأ في الاتصال بالخادم، يرجى المحاولة مرة أخرى.</li></ul>');
+    })
+    .finally(() => {
+        submitBtn.disabled = false;
+        overlay.classList.remove('show');
     });
 }
 
+// ============================================
+// [JS-12] أحداث عامة أخرى
+// ============================================
 function setupItemsCountInput() {
     const inp = document.getElementById('items-count');
     if(inp) inp.addEventListener('input', function() {

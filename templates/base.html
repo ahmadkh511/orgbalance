@@ -139,8 +139,8 @@
         .menu-submenu {
             position: absolute;
             top: 100%;
-            right: 50%;
-            transform: translateX(50%) translateY(-6px);
+            right: 0; /* تعديل: تثبيت من الجهة اليمنى كإفتراضي */
+            transform: translateY(-6px);
             min-width: 240px; background: white; border-radius: 0 0 12px 12px;
             box-shadow: var(--shadow-md); border: 1px solid var(--aqua-2);
             border-top: 3px solid var(--aqua-3); padding: 6px 0;
@@ -151,7 +151,7 @@
         }
         #navbarSupportedContent li.has-submenu:hover>.menu-submenu {
             opacity: 1; visibility: visible;
-            transform: translateX(50%) translateY(0);
+            transform: translateY(0);
         }
         .menu-submenu li { float: none !important; }
         .menu-submenu li a {
@@ -168,7 +168,18 @@
         .menu-submenu li.sub-active a { background-color: var(--aqua-1) !important; color: var(--aqua-4) !important; font-weight: 600; }
         .menu-submenu li.sub-active a i { color: var(--aqua-4) !important; }
 
-        .navbar-left-section { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+        .navbar-left-section { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+
+        /* إضافة اسم المستخدم في الشريط العلوي */
+        .nav-username {
+            color: rgba(255,255,255,0.9);
+            font-size: 0.82rem;
+            font-weight: 600;
+            max-width: 110px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
 
         .nav-action-btn {
             position: relative; width: 34px; height: 34px; border-radius: 4px;
@@ -204,46 +215,20 @@
         .user-dropdown-trigger i { color: rgba(255,255,255,0.7); font-size: 0.75rem; }
 
         .user-dropdown-backdrop {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.45);
-            z-index: 10750;
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
+            position: fixed; inset: 0; background: rgba(0, 0, 0, 0.45); z-index: 10750;
+            opacity: 0; visibility: hidden; pointer-events: none;
             transition: opacity 0.25s ease, visibility 0.25s ease;
         }
-        .user-dropdown-backdrop.active {
-            opacity: 1;
-            visibility: visible;
-            pointer-events: auto;
-        }
+        .user-dropdown-backdrop.active { opacity: 1; visibility: visible; pointer-events: auto; }
 
         .user-dropdown-menu {
-            position: fixed;
-            min-width: 230px;
-            background: #ffffff;
-            border-radius: 12px;
-            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
-            border: 1px solid var(--aqua-2);
-            padding: 0;
-            z-index: 10760;
-            overflow: hidden;
-            opacity: 0;
-            visibility: hidden;
-            pointer-events: none;
-            transform: scale(0.95);
-            transform-origin: top center;
+            position: fixed; min-width: 230px; background: #ffffff; border-radius: 12px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15); border: 1px solid var(--aqua-2);
+            padding: 0; z-index: 10760; overflow: hidden; opacity: 0; visibility: hidden;
+            pointer-events: none; transform: scale(0.95); transform-origin: top center;
             transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
         }
-        .user-dropdown-menu.show {
-            opacity: 1;
-            visibility: visible;
-            pointer-events: auto;
-            transform: scale(1);
-        }
+        .user-dropdown-menu.show { opacity: 1; visibility: visible; pointer-events: auto; transform: scale(1); }
 
         .user-dropdown-menu .ud-header { padding: 12px 16px; background: linear-gradient(135deg, var(--aqua-4) 0%, #006064 100%); color: var(--text-light); }
         .user-dropdown-menu .ud-name { font-size: 0.88rem; font-weight: 600; margin: 0; }
@@ -265,28 +250,17 @@
 
         @media (max-width: 768px) {
             .user-dropdown-menu {
-                top: auto !important;
-                bottom: 0 !important;
-                left: 0 !important;
-                right: 0 !important;
-                width: 100% !important;
-                max-width: 100% !important;
-                min-width: 100% !important;
-                border-radius: 20px 20px 0 0 !important;
-                border: none !important;
+                top: auto !important; bottom: 0 !important; left: 0 !important; right: 0 !important;
+                width: 100% !important; max-width: 100% !important; min-width: 100% !important;
+                border-radius: 20px 20px 0 0 !important; border: none !important;
                 border-top: 3px solid var(--aqua-3) !important;
                 box-shadow: 0 -4px 30px rgba(0, 0, 0, 0.15) !important;
-                max-height: 85vh;
-                overflow-y: auto;
-                transform: translateY(100%) !important;
-                transform-origin: bottom center !important;
+                max-height: 85vh; overflow-y: auto;
+                transform: translateY(100%) !important; transform-origin: bottom center !important;
                 transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s ease, visibility 0.3s ease !important;
             }
             .user-dropdown-menu.show { transform: translateY(0) !important; }
-            .user-dropdown-menu::before {
-                content: ''; display: block; width: 36px; height: 4px;
-                background: #d0d0d0; border-radius: 4px; margin: 10px auto 0;
-            }
+            .user-dropdown-menu::before { content: ''; display: block; width: 36px; height: 4px; background: #d0d0d0; border-radius: 4px; margin: 10px auto 0; }
             .user-dropdown-menu .ud-header { padding: 14px 20px 12px; }
             .user-dropdown-menu .ud-name { font-size: 0.95rem; }
             .user-dropdown-menu .ud-role { font-size: 0.78rem; }
@@ -431,6 +405,7 @@
             .navbar-logo .company-name { font-size: 0.72rem; max-width: 130px; line-height: 1.2; }
             .logo-icon { width: 38px; height: 38px; }
             .logo-icon i { font-size: 1rem; }
+            .nav-username { display: none !important; } /* إخفاء اسم المستخدم على الموبايل */
             .sidebar { width: 88vw; max-width: 340px; }
             .sidebar-login-bar { padding: 8px 14px; font-size: 0.68rem; }
             .sidebar-link { padding: 10px 14px; font-size: 0.82rem; }
@@ -552,9 +527,7 @@
                 <div id="navbarSupportedContent">
                     <div class="hori-selector"></div>
                     <ul>
-                        <li class="{% if request.resolver_match.url_name == 'index' %}active{% endif %}">
-                            <a href="{% url 'index' %}"><i class="fas fa-home nav-icon"></i>الرئي5--55**55سية</a>
-                        </li>
+                        {# تم حذف زر الرئيسية بناءً على طلبك، والضغط على الشعار يعود للرئيسية #}
                         <li class="has-submenu {% if 'invoice' in request.resolver_match.url_name or 'purch' in request.resolver_match.url_name or 'sale' in request.resolver_match.url_name %}active{% endif %}">
                             <a href="#"><i class="fas fa-file-invoice nav-icon"></i>الفواتير</a>
                             <ul class="menu-submenu">
@@ -582,7 +555,7 @@
                                 <li class="{% if request.resolver_match.url_name == 'admin_stock_notifications' %}sub-active{% endif %}"><a href="{% url 'invoice:admin_stock_notifications' %}"><i class="fas fa-bell"></i>تنبيهات المخزون</a></li>
                                 <li class="{% if request.resolver_match.url_name == 'notification_archive' %}sub-active{% endif %}"><a href="{% url 'invoice:notification_archive' %}"><i class="fas fa-history"></i>أرشيف الإشعارات</a></li>
                                 <li class="{% if request.resolver_match.url_name == 'control_store' %}sub-active{% endif %}"><a href="{% url 'invoice:control_store' %}"><i class="fas fa-sliders-h"></i>إدارة المتجر</a></li>
-                                <li class="{% if request.resolver_match.url_name == 'store_front' %}sub-active{% endif %}"><a href="{% url 'invoice:store_front' %}" target="_blank"><i class="fas fa-external-link-alt"></i>واجهة المتجر</a></li>
+                                <li class="{% if request.resolver_match.url_name == 'store_front' %}sub-active{% endif %}"><a href="{% url 'invoice:store_front' %}" target="_blank" rel="nofollow noopener noreferrer"><i class="fas fa-external-link-alt"></i>واجهة المتجر</a></li>
                                 <li class="{% if request.resolver_match.url_name == 'checkout' %}sub-active{% endif %}"><a href="{% url 'invoice:checkout' %}"><i class="fas fa-credit-card"></i>صفحة الدفع</a></li>
                             </ul>
                         </li>
@@ -645,10 +618,16 @@
                     <i class="fas fa-bell"></i>
                     <span class="nav-badge red">3</span>
                 </button>
+                
+                <!-- إضافة اسم المستخدم المتجوب -->
+                <span class="nav-username d-none d-md-inline-block" title="{{ user.get_full_name|default:user.username }}">
+                    {{ user.get_full_name|default:user.username }}
+                </span>
+
                 <div class="user-dropdown">
                     <div class="user-dropdown-trigger" id="userMenuBtn">
                         {% if user.profile.profile_picture %}
-                            <img src="{{ user.profile.profile_picture.url }}" alt="">
+                            <img src="{{ user.profile.profile_picture.url }}" alt="صورة المستخدم">
                         {% else %}
                             <i class="fas fa-user"></i>
                         {% endif %}
@@ -733,7 +712,7 @@
                     <li class="sidebar-item"><a href="{% url 'invoice:admin_stock_notifications' %}" class="sidebar-link"><i class="fas fa-bell sidebar-icon"></i><span class="sidebar-text">تنبيهات المخزون</span></a></li>
                     <li class="sidebar-item"><a href="{% url 'invoice:notification_archive' %}" class="sidebar-link"><i class="fas fa-history sidebar-icon"></i><span class="sidebar-text">أرشيف الإشعارات</span></a></li>
                     <li class="sidebar-item"><a href="{% url 'invoice:control_store' %}" class="sidebar-link"><i class="fas fa-sliders-h sidebar-icon"></i><span class="sidebar-text">إدارة المتجر</span></a></li>
-                    <li class="sidebar-item"><a href="{% url 'invoice:store_front' %}" class="sidebar-link" target="_blank"><i class="fas fa-external-link-alt sidebar-icon"></i><span class="sidebar-text">واجهة المتجر</span></a></li>
+                    <li class="sidebar-item"><a href="{% url 'invoice:store_front' %}" class="sidebar-link" target="_blank" rel="nofollow noopener noreferrer"><i class="fas fa-external-link-alt sidebar-icon"></i><span class="sidebar-text">واجهة المتجر</span></a></li>
                     <li class="sidebar-item"><a href="{% url 'invoice:checkout' %}" class="sidebar-link"><i class="fas fa-credit-card sidebar-icon"></i><span class="sidebar-text">صفحة الدفع</span></a></li>
                     <li class="sidebar-item">
                         <a href="{% url 'invoice:cart_detail' %}" class="sidebar-link">
@@ -849,24 +828,24 @@
                     <p style="color:rgba(255,255,255,0.65);margin-bottom:0.6rem;font-size:0.8rem;">نظام متكامل لإدارة الفواتير والمخزون والعملاء.</p>
                     <div class="social-links">
                         {% if company_settings.social_facebook %}
-                            <a href="{{ company_settings.social_facebook }}" target="_blank"><i class="fab fa-facebook-f"></i></a>
+                            <a href="{{ company_settings.social_facebook }}" target="_blank" rel="nofollow noopener noreferrer"><i class="fab fa-facebook-f"></i></a>
                         {% else %}
-                            <a href="#"><i class="fab fa-facebook-f"></i></a>
+                            <a href="#" rel="nofollow noopener noreferrer"><i class="fab fa-facebook-f"></i></a>
                         {% endif %}
                         {% if company_settings.social_twitter %}
-                            <a href="{{ company_settings.social_twitter }}" target="_blank"><i class="fab fa-twitter"></i></a>
+                            <a href="{{ company_settings.social_twitter }}" target="_blank" rel="nofollow noopener noreferrer"><i class="fab fa-twitter"></i></a>
                         {% else %}
-                            <a href="#"><i class="fab fa-twitter"></i></a>
+                            <a href="#" rel="nofollow noopener noreferrer"><i class="fab fa-twitter"></i></a>
                         {% endif %}
                         {% if company_settings.social_instagram %}
-                            <a href="{{ company_settings.social_instagram }}" target="_blank"><i class="fab fa-instagram"></i></a>
+                            <a href="{{ company_settings.social_instagram }}" target="_blank" rel="nofollow noopener noreferrer"><i class="fab fa-instagram"></i></a>
                         {% else %}
-                            <a href="#"><i class="fab fa-instagram"></i></a>
+                            <a href="#" rel="nofollow noopener noreferrer"><i class="fab fa-instagram"></i></a>
                         {% endif %}
                         {% if company_settings.social_linkedin %}
-                            <a href="{{ company_settings.social_linkedin }}" target="_blank"><i class="fab fa-linkedin-in"></i></a>
+                            <a href="{{ company_settings.social_linkedin }}" target="_blank" rel="nofollow noopener noreferrer"><i class="fab fa-linkedin-in"></i></a>
                         {% else %}
-                            <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                            <a href="#" rel="nofollow noopener noreferrer"><i class="fab fa-linkedin-in"></i></a>
                         {% endif %}
                     </div>
                 </div>
@@ -874,9 +853,9 @@
                     <div class="footer-links">
                         <h6>{{ company_settings.footer_quick_links_title|default:"روابط سريعة" }}</h6>
                         <ul>
-                            <li><a href="{{ company_settings.quick_link_support|default:'#' }}" target="_blank"><i class="fas fa-angle-left"></i> الدعم الفني</a></li>
-                            <li><a href="{{ company_settings.quick_link_guide|default:'#' }}" target="_blank"><i class="fas fa-angle-left"></i> دليل الاستخدام</a></li>
-                            <li><a href="{{ company_settings.quick_link_faq|default:'#' }}" target="_blank"><i class="fas fa-angle-left"></i> الأسئلة الشائعة</a></li>
+                            <li><a href="{{ company_settings.quick_link_support|default:'#' }}" target="_blank" rel="nofollow noopener noreferrer"><i class="fas fa-angle-left"></i> الدعم الفني</a></li>
+                            <li><a href="{{ company_settings.quick_link_guide|default:'#' }}" target="_blank" rel="nofollow noopener noreferrer"><i class="fas fa-angle-left"></i> دليل الاستخدام</a></li>
+                            <li><a href="{{ company_settings.quick_link_faq|default:'#' }}" target="_blank" rel="nofollow noopener noreferrer"><i class="fas fa-angle-left"></i> الأسئلة الشائعة</a></li>
                         </ul>
                     </div>
                 </div>
@@ -884,9 +863,9 @@
                     <div class="footer-links">
                         <h6>{{ company_settings.footer_features_title|default:"المميزات" }}</h6>
                         <ul>
-                            <li><a href="{{ company_settings.feature_invoices|default:'#' }}" target="_blank"><i class="fas fa-angle-left"></i> إدارة الفواتير</a></li>
-                            <li><a href="{{ company_settings.feature_inventory|default:'#' }}" target="_blank"><i class="fas fa-angle-left"></i> إدارة المخزون</a></li>
-                            <li><a href="{{ company_settings.feature_reports|default:'#' }}" target="_blank"><i class="fas fa-angle-left"></i> التقارير الذكية</a></li>
+                            <li><a href="{{ company_settings.feature_invoices|default:'#' }}" target="_blank" rel="nofollow noopener noreferrer"><i class="fas fa-angle-left"></i> إدارة الفواتير</a></li>
+                            <li><a href="{{ company_settings.feature_inventory|default:'#' }}" target="_blank" rel="nofollow noopener noreferrer"><i class="fas fa-angle-left"></i> إدارة المخزون</a></li>
+                            <li><a href="{{ company_settings.feature_reports|default:'#' }}" target="_blank" rel="nofollow noopener noreferrer"><i class="fas fa-angle-left"></i> التقارير الذكية</a></li>
                         </ul>
                     </div>
                 </div>
@@ -1112,6 +1091,49 @@
                     if (badge) badge.remove();
                 }
             };
+
+            // ==========================================
+            // معالجة ذكية لمنع خروج القوائم من الشاشة
+            // ==========================================
+            function adjustDropdownPosition(submenu) {
+                if (!submenu) return;
+                
+                // إعادة تعيين الأنماط المحسوبة مسبقاً
+                submenu.style.left = '';
+                submenu.style.right = '';
+                
+                var rect = submenu.getBoundingClientRect();
+                var viewportWidth = window.innerWidth;
+                
+                // إذا كانت القائمة تتجاوز الحافة اليسرى
+                if (rect.left < 0) {
+                    submenu.style.left = '0';
+                    submenu.style.right = 'auto';
+                } 
+                // إذا كانت القائمة تتجاوز الحافة اليمنى
+                else if (rect.right > viewportWidth) {
+                    submenu.style.right = '0';
+                    submenu.style.left = 'auto';
+                }
+            }
+
+            document.querySelectorAll('#navbarSupportedContent .has-submenu').forEach(function(item) {
+                var sub = item.querySelector('.menu-submenu');
+                if (sub) {
+                    item.addEventListener('mouseenter', function() {
+                        adjustDropdownPosition(sub);
+                    });
+                }
+            });
+
+            // تحديث الموضع عند تغيير حجم المتصفح
+            window.addEventListener('resize', function() {
+                var activeSub = document.querySelector('#navbarSupportedContent .has-submenu:hover > .menu-submenu');
+                if (activeSub) {
+                    adjustDropdownPosition(activeSub);
+                }
+            });
+
         });
 
         function confirmDelete(message) {
@@ -1136,7 +1158,7 @@
     <div class="wa-float-container">
         <div class="wa-float-msg">تواصل معنا 💬</div>
         <a href="https://wa.me/{{ company_settings.whatsapp_number }}?text={% if company_settings.whatsapp_message %}{{ company_settings.whatsapp_message|urlencode }}{% else %}مرحباً{% endif %}"
-           target="_blank" rel="nofollow noopener" class="wa-float-btn">
+           target="_blank" rel="nofollow noopener noreferrer" class="wa-float-btn">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
         </a>
     </div>

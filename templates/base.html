@@ -77,24 +77,24 @@
             box-shadow: var(--shadow-md);
         }
 
-        .navbar-right-section { display: flex; align-items: center; gap: 12px; flex-shrink: 0; min-width: 0; }
+        .navbar-right-section { display: flex; align-items: center; gap: 10px; flex-shrink: 0; min-width: 0; }
 
         .navbar-logo {
-            display: flex; align-items: center; gap: 8px;
-            text-decoration: none; color: var(--text-light); font-weight: 700; font-size: 0.95rem;
+            display: flex; align-items: center; gap: 6px;
+            text-decoration: none; color: var(--text-light); font-weight: 700; font-size: 0.9rem;
             min-width: 0;
         }
         .navbar-logo:hover { color: var(--text-light); }
 
         .logo-icon {
-            width: 45px; height: 45px;
+            width: 40px; height: 40px;
             background: rgba(255,255,255,0.2);
             border: 1px solid rgba(255,255,255,0.3);
             border-radius: 4px;
             display: flex; align-items: center; justify-content: center;
             overflow: hidden; flex-shrink: 0;
         }
-        .logo-icon i { color: var(--text-light); font-size: 1.2rem; }
+        .logo-icon i { color: var(--text-light); font-size: 1.1rem; }
         .logo-icon img { width: 100%; height: 100%; object-fit: contain; }
 
         .navbar-logo .company-name {
@@ -105,24 +105,32 @@
             min-width: 0;
         }
 
-        .navbar-center-section { flex: 1; display: flex; justify-content: center; overflow: visible; }
+        /* تعديل المسافة: إلغاء التوسيط وجعل القائمة تبدأ من اليمين مباشرة */
+        .navbar-center-section { 
+            flex: 1; 
+            display: flex; 
+            justify-content: flex-start; 
+            overflow: visible; 
+            margin-right: 10px; /* مسافة صغيرة جداً تفصل الشعار عن القائمة */
+        }
         #navbarSupportedContent { position: relative; overflow: visible; }
         #navbarSupportedContent ul { padding: 0; margin: 0; list-style: none; display: flex; align-items: stretch; }
         #navbarSupportedContent li { float: right; position: relative; }
 
+        /* تقليل المسافات الجانبية لأزرار القائمة لتقلص الفراغات */
         #navbarSupportedContent ul li a {
-            color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13.5px;
+            color: rgba(255,255,255,0.7); text-decoration: none; font-size: 13px;
             font-weight: 500; display: flex; align-items: center; justify-content: center;
-            padding: 18px 14px; position: relative; transition: color 0.3s ease;
-            white-space: nowrap; gap: 5px;
+            padding: 18px 7px; position: relative; transition: color 0.3s ease;
+            white-space: nowrap; gap: 4px;
         }
-        #navbarSupportedContent ul li a i.nav-icon { font-size: 0.8rem; margin: 0; }
+        #navbarSupportedContent ul li a i.nav-icon { font-size: 0.75rem; margin: 0; }
         #navbarSupportedContent>ul>li.active>a { color: var(--aqua-4); font-weight: 600; }
         #navbarSupportedContent>ul>li:hover>a { color: rgba(255,255,255,0.95); }
 
         #navbarSupportedContent ul li.has-submenu>a:not(:only-child):after {
             content: "\f107"; font-family: "Font Awesome 5 Free"; font-weight: 900;
-            font-size: 10px; margin-right: 2px; transition: transform 0.3s ease;
+            font-size: 9px; margin-right: 1px; transition: transform 0.3s ease;
         }
         #navbarSupportedContent>ul>li.has-submenu:hover>a:not(:only-child):after,
         #navbarSupportedContent>ul>li.has-submenu.active>a:not(:only-child):after { transform: rotate(180deg); }
@@ -139,9 +147,9 @@
         .menu-submenu {
             position: absolute;
             top: 100%;
-            right: 0; /* تعديل: تثبيت من الجهة اليمنى كإفتراضي */
+            right: 0; 
             transform: translateY(-6px);
-            min-width: 240px; background: white; border-radius: 0 0 12px 12px;
+            min-width: 220px; background: white; border-radius: 0 0 12px 12px;
             box-shadow: var(--shadow-md); border: 1px solid var(--aqua-2);
             border-top: 3px solid var(--aqua-3); padding: 6px 0;
             opacity: 0; visibility: hidden;
@@ -155,7 +163,7 @@
         }
         .menu-submenu li { float: none !important; }
         .menu-submenu li a {
-            color: var(--text-dark) !important; padding: 9px 18px 9px 14px !important;
+            color: var(--text-dark) !important; padding: 9px 16px 9px 12px !important;
             font-size: 0.82rem !important; display: flex; align-items: center;
             gap: 10px; transition: all 0.15s ease;
         }
@@ -168,9 +176,30 @@
         .menu-submenu li.sub-active a { background-color: var(--aqua-1) !important; color: var(--aqua-4) !important; font-weight: 600; }
         .menu-submenu li.sub-active a i { color: var(--aqua-4) !important; }
 
+        /* ==========================================
+           حل مشكلة التقارير: شبكة (Grid) تلتف 5 في كل عمود
+           ========================================== */
+        .reports-submenu {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(200px, 1fr)); /* عمودين */
+            min-width: 440px !important; /* اتساع كافي لعمودين */
+            max-width: 500px !important;
+            padding: 0 !important;
+        }
+        .reports-submenu li {
+            break-inside: avoid; /* منع تقطيع العنصر */
+        }
+        .reports-submenu li a {
+            border-radius: 0 0 0 0 !important; 
+            padding: 10px 14px !important;
+        }
+        /* تعديل الحدود السفلية لتناسب شبكة التقارير */
+        #navbarSupportedContent li.has-submenu:last-child .reports-submenu {
+            border-radius: 0 0 12px 12px;
+        }
+
         .navbar-left-section { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
-        /* إضافة اسم المستخدم في الشريط العلوي */
         .nav-username {
             color: rgba(255,255,255,0.9);
             font-size: 0.82rem;
@@ -381,15 +410,18 @@
         @media (min-width: 1401px) { .navbar-inner { padding: 0 1.5rem; } }
 
         @media (max-width: 1400px) {
-            #navbarSupportedContent ul li a { padding: 18px 11px; font-size: 13px; }
-            .menu-submenu { min-width: 220px; }
+            #navbarSupportedContent ul li a { padding: 18px 6px; font-size: 12.5px; }
         }
 
         @media (max-width: 1200px) {
-            #navbarSupportedContent ul li a { padding: 18px 9px; font-size: 12.5px; }
+            #navbarSupportedContent ul li a { padding: 18px 5px; font-size: 12px; }
             #navbarSupportedContent ul li a i.nav-icon { display: none; }
-            .menu-submenu { min-width: 200px; }
-            .menu-submenu li a { font-size: 0.78rem !important; padding: 8px 14px !important; }
+            /* إلغاء شبكة التقارير في الشاشات المتوسطة لتصبح عمود واحد عادي */
+            .reports-submenu {
+                display: block !important;
+                min-width: 200px !important;
+                max-width: unset !important;
+            }
         }
 
         @media (max-width: 992px) {
@@ -405,7 +437,7 @@
             .navbar-logo .company-name { font-size: 0.72rem; max-width: 130px; line-height: 1.2; }
             .logo-icon { width: 38px; height: 38px; }
             .logo-icon i { font-size: 1rem; }
-            .nav-username { display: none !important; } /* إخفاء اسم المستخدم على الموبايل */
+            .nav-username { display: none !important; }
             .sidebar { width: 88vw; max-width: 340px; }
             .sidebar-login-bar { padding: 8px 14px; font-size: 0.68rem; }
             .sidebar-link { padding: 10px 14px; font-size: 0.82rem; }
@@ -527,7 +559,7 @@
                 <div id="navbarSupportedContent">
                     <div class="hori-selector"></div>
                     <ul>
-                        {# تم حذف زر الرئيسية بناءً على طلبك، والضغط على الشعار يعود للرئيسية #}
+                        {# تم حذف زر الرئيسية #}
                         <li class="has-submenu {% if 'invoice' in request.resolver_match.url_name or 'purch' in request.resolver_match.url_name or 'sale' in request.resolver_match.url_name %}active{% endif %}">
                             <a href="#"><i class="fas fa-file-invoice nav-icon"></i>الفواتير</a>
                             <ul class="menu-submenu">
@@ -566,9 +598,10 @@
                                 <li class="{% if request.resolver_match.url_name == 'cash_transaction_create' %}sub-active{% endif %}"><a href="{% url 'invoice:cash_transaction_create' %}"><i class="fas fa-hand-holding-usd"></i>حركة مالية</a></li>
                             </ul>
                         </li>
+                        <!-- تبويب التقارير مع كلاس التقسيم -->
                         <li class="has-submenu {% if 'report' in request.resolver_match.url_name %}active{% endif %}">
                             <a href="#"><i class="fas fa-chart-bar nav-icon"></i>التقارير</a>
-                            <ul class="menu-submenu">
+                            <ul class="menu-submenu reports-submenu">
                                 <li class="{% if request.resolver_match.url_name == 'profit_report' %}sub-active{% endif %}"><a href="{% url 'invoice:profit_report' %}"><i class="fas fa-chart-line"></i>تقرير الأرباح</a></li>
                                 <li class="{% if request.resolver_match.url_name == 'daily_sales_summary' %}sub-active{% endif %}"><a href="{% url 'invoice:daily_sales_summary' %}"><i class="fas fa-calendar-day"></i>ملخص المبيعات اليومي</a></li>
                                 <li class="{% if request.resolver_match.url_name == 'sales_by_customer_report' %}sub-active{% endif %}"><a href="{% url 'invoice:sales_by_customer_report' %}"><i class="fas fa-users"></i>مبيعات العملاء</a></li>
@@ -619,7 +652,6 @@
                     <span class="nav-badge red">3</span>
                 </button>
                 
-                <!-- إضافة اسم المستخدم المتجوب -->
                 <span class="nav-username d-none d-md-inline-block" title="{{ user.get_full_name|default:user.username }}">
                     {{ user.get_full_name|default:user.username }}
                 </span>
@@ -1092,25 +1124,18 @@
                 }
             };
 
-            // ==========================================
-            // معالجة ذكية لمنع خروج القوائم من الشاشة
-            // ==========================================
             function adjustDropdownPosition(submenu) {
                 if (!submenu) return;
-                
-                // إعادة تعيين الأنماط المحسوبة مسبقاً
                 submenu.style.left = '';
                 submenu.style.right = '';
                 
                 var rect = submenu.getBoundingClientRect();
                 var viewportWidth = window.innerWidth;
                 
-                // إذا كانت القائمة تتجاوز الحافة اليسرى
                 if (rect.left < 0) {
                     submenu.style.left = '0';
                     submenu.style.right = 'auto';
                 } 
-                // إذا كانت القائمة تتجاوز الحافة اليمنى
                 else if (rect.right > viewportWidth) {
                     submenu.style.right = '0';
                     submenu.style.left = 'auto';
@@ -1126,7 +1151,6 @@
                 }
             });
 
-            // تحديث الموضع عند تغيير حجم المتصفح
             window.addEventListener('resize', function() {
                 var activeSub = document.querySelector('#navbarSupportedContent .has-submenu:hover > .menu-submenu');
                 if (activeSub) {

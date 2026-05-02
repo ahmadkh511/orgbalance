@@ -232,6 +232,13 @@ import datetime  # تأكد من وجود هذا السطر في أعلى الم
 from django.utils.dateparse import parse_date
 
 
+from django.shortcuts import render, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.db.models import Sum
+from types import SimpleNamespace
+from decimal import Decimal
+from .models import Purch
+
 # ==================== إعدادات التسجيل ====================
 logger = logging.getLogger(__name__)
 
@@ -607,13 +614,6 @@ def purch_create(request):
         'title': 'إنشاء فاتورة شراء جديدة'
     })
 
-
-from django.shortcuts import render, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
-from types import SimpleNamespace
-from decimal import Decimal
-from .models import Purch
 
 @login_required
 def purch_detail(request, slug):

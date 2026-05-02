@@ -25,6 +25,13 @@ from django.db import models
 from django.core.exceptions import ValidationError
 
 
+from django.db import models
+from django.utils.translation import gettext_lazy as _
+from decimal import Decimal
+import uuid
+import re
+from django.template.defaultfilters import slugify
+
 # التهيئة المحلية
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -371,12 +378,7 @@ class PriceType(models.Model):
 #  المنتجات   و الباركود 
 # ===============================================
 
-from django.db import models
-from django.utils.translation import gettext_lazy as _
-from decimal import Decimal
-import uuid
-import re
-from django.template.defaultfilters import slugify
+
 
 class Product(models.Model):
     """نموذج المنتج"""
@@ -538,6 +540,7 @@ class Product(models.Model):
     def primary_barcode(self):
         primary_barcode = self.barcodes.filter(is_primary=True).first()
         return primary_barcode.barcode_in if primary_barcode else None
+
 
 
 class Barcode(models.Model):

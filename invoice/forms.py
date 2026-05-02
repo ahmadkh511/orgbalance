@@ -422,6 +422,8 @@ PurchItemBarcodeEditFormSet = inlineformset_factory(
 #  المنتجات و الباركود 
 # ===============================================
 
+
+
 class ProductForm(forms.ModelForm):
     """نموذج المنتج - معلومات فقط بدون حسابات"""
     
@@ -463,6 +465,8 @@ class ProductForm(forms.ModelForm):
         self.fields['product_name'].required = True
         self.fields['product_description'].required = False
         self.fields['product_image'].required = False
+
+
 
 class BarcodeForm(forms.ModelForm):
     """نموذج لإضافة باركود جديد"""

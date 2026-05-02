@@ -11,7 +11,7 @@
 
     .compact-container {
         padding: 1.5rem;
-        max-width: 1600px; /* عرض أوسع لاستغلال الشاشة */
+        max-width: 1600px;
         margin: 0 auto;
     }
 
@@ -155,7 +155,7 @@
         color: #2c3e50;
     }
 
-    /* شارات المخزون (صغيرة) */
+    /* شارات المخزون والتصنيفات */
     .badge-sm {
         padding: 0.3rem 0.6rem;
         border-radius: 4px;
@@ -166,6 +166,7 @@
     .bg-med { background-color: #fff8e1; color: #f57f17; }
     .bg-high { background-color: #e8f5e9; color: #2e7d32; }
     .bg-info-soft { background-color: #e3f2fd; color: #1565c0; }
+    .bg-category { background-color: #f3e5f5; color: #7b1fa2; } /* لون جديد للتصنيف */
 
     /* أزرار الإجراءات (مدمجة) */
     .actions-cell {
@@ -197,21 +198,56 @@
     .btn-icon-sm.text-primary:hover { background: #e3f2fd; color: #3498db; }
     .btn-icon-sm.text-warning:hover { background: #fff8e1; color: #f39c12; }
 
-    /* === قسم الباركود المنسدل (مدمج) === */
+    /* === قسم الأكورديون المنسدل (مطور لعرض كامل البيانات) === */
     .accordion-row {
         background-color: #fcfcfc;
     }
     
     .accordion-content {
-        padding: 0.75rem 1rem 0.75rem 4rem; /* مسافة بادئة */
+        padding: 1rem;
         border-bottom: 1px solid #f1f1f1;
         font-size: 0.9rem;
-        display: none; /* مخفي افتراضياً */
+        display: none;
     }
     
     .accordion-content.show {
         display: block;
         animation: fadeIn 0.2s ease;
+    }
+
+    /* شبكة التفاصيل داخل الأكورديون */
+    .details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 1rem;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 1px dashed #eee;
+    }
+    .detail-item {
+        display: flex;
+        flex-direction: column;
+    }
+    .detail-label {
+        font-size: 0.75rem;
+        color: #95a5a6;
+        margin-bottom: 0.2rem;
+    }
+    .detail-value {
+        font-weight: 600;
+        color: #2c3e50;
+    }
+    .detail-value.text-success { color: #27ae60; }
+
+    /* شارات العروض */
+    .offer-badge {
+        background: #fff3e0;
+        color: #e65100;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        margin-left: 0.3rem;
+        border: 1px solid #ffe0b2;
     }
 
     .barcode-tag {
@@ -245,11 +281,13 @@
         .compact-table thead th { font-size: 0.75rem; padding: 0.6rem; }
         .compact-table tbody td { padding: 0.6rem; font-size: 0.85rem; }
         .search-input-compact { width: 180px; }
+        .details-grid { grid-template-columns: repeat(2, 1fr); }
     }
     
     @media (max-width: 768px) {
-        .hide-mobile { display: none; } /* إخفاء أعمدة أقل أهمية */
+        .hide-mobile { display: none; }
         .header-title h1 { font-size: 1.2rem; }
+        .details-grid { grid-template-columns: 1fr; }
     }
 </style>
 
@@ -279,10 +317,11 @@
                     <th style="width: 50px;">#</th>
                     <th style="width: 50px;">الصورة</th>
                     <th>اسم المادة</th>
+                    <th class="hide-mobile">التصنيف</th> <!-- العمود الجديد -->
                     <th class="hide-mobile">سعر الشراء</th>
                     <th>سعر البيع</th>
                     <th>المخزون</th>
-                    <th class="hide-mobile">الباركود</th>
+                    <th class="hide-mobile">التفاصيل</th> <!-- تغيير اسم العمود ليناسب عرض البيانات -->
                     <th style="width: 140px;">الإجراءات</th>
                 </tr>
             </thead>
@@ -299,6 +338,16 @@
                         {% endif %}
                     </td>
                     <td class="product-name-cell">{{ product.product_name }}</td>
+                    
+                    <!-- عمود التصنيف -->
+                    <td class="hide-mobile">
+                        {% if product.category %}
+                            <span class="badge-sm bg-category">{{ product.category.category_name }}</span>
+                        {% else %}
+                            <span style="color:#bdc3c7; font-size:0.8rem;">-</span>
+                        {% endif %}
+                    </td>
+
                     <td class="hide-mobile">{{ product.purch_price }}</td>
                     <td style="color: #27ae60; font-weight: 600;">{{ product.sale_price }}</td>
                     <td>
@@ -310,41 +359,101 @@
                             <span class="badge-sm bg-high">{{ product.current_stock_quantity }}</span>
                         {% endif %}
                     </td>
+                    
                     <td class="hide-mobile">
-                        {% if product.active_barcodes %}
-                            <span class="badge-sm bg-info-soft" title="اضغط لعرض الباركودات">
-                                {{ product.active_barcodes|length }} أكواد
-                            </span>
-                        {% else %}
-                            <span style="color:#bdc3c7; font-size:0.8rem;">-</span>
-                        {% endif %}
+                        <span class="badge-sm bg-info-soft">
+                            <i class="fas fa-chevron-down fa-xs"></i> عرض المزيد
+                        </span>
                     </td>
-                    <td class="actions-cell" onclick="event.stopPropagation();"> <!-- منع فتح الأكورديون عند الضغط على الأزرار -->
+
+                    <td class="actions-cell" onclick="event.stopPropagation();">
                         <a href="{% url 'invoice:product_detail' slug=product.slug %}" class="btn-icon-sm text-primary" title="عرض"><i class="fas fa-eye"></i></a>
                         <a href="{% url 'invoice:product_edit' slug=product.slug %}" class="btn-icon-sm text-warning" title="تعديل"><i class="fas fa-edit"></i></a>
                         <a href="{% url 'invoice:product_delete' slug=product.slug %}" class="btn-icon-sm text-danger" title="حذف" onclick="return confirm('هل أنت متأكد؟')"><i class="fas fa-trash"></i></a>
                     </td>
                 </tr>
                 
-                <!-- صف تفاصيل الباركود (مخفي) -->
-                {% if product.active_barcodes %}
+                <!-- صف تفاصيل البيانات والباركود (مخفي) - تم إزالة شرط الباركود ليظهر دائماً -->
                 <tr id="accordion-{{ product.id }}" class="accordion-row">
-                    <td colspan="8" style="padding:0;">
+                    <td colspan="9" style="padding:0;">
                         <div class="accordion-content">
-                            <div style="margin-bottom: 0.3rem; color:#7f8c8d; font-size:0.8rem;">باركودات نشطة:</div>
-                            {% for barcode in product.active_barcodes %}
-                                <span class="barcode-tag {% if barcode.is_primary %}primary{% endif %}">
-                                    {% if barcode.is_primary %}<i class="fas fa-star fa-xs" style="color:#f1c40f;"></i> {% endif %}
-                                    {{ barcode.barcode_in }}
-                                </span>
-                            {% endfor %}
+                            
+                            <!-- شبكة التفاصيل المالية وهوامش الربح -->
+                            <div class="details-grid">
+                                <div class="detail-item">
+                                    <span class="detail-label">متوسط تكلفة الشراء</span>
+                                    <span class="detail-value">{{ product.average_purchase_cost }}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">هوامش الربح (مفرق/نصف جملة/جملة)</span>
+                                    <span class="detail-value">
+                                        {{ product.retail_profit_margin }}% / 
+                                        {{ product.semi_wholesale_profit_margin }}% / 
+                                        {{ product.wholesale_profit_margin }}%
+                                    </span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">تعديل السعر (+/-)</span>
+                                    <span class="detail-value" style="color: {% if product.price_adjustment > 0 %}#27ae60{% elif product.price_adjustment < 0 %}#e74c3c{% else %}#2c3e50{% endif %};">
+                                        {% if product.price_adjustment > 0 %}+{% endif %}{{ product.price_adjustment }}
+                                    </span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">السعر بالعملة الأجنبية</span>
+                                    <span class="detail-value">
+                                        {% if product.foreign_currency %}{{ product.foreign_currency_price }} ({{ product.foreign_currency }}){% else %}-{% endif %}
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- شبكة أسعار البيع التفصيلية -->
+                            <div class="details-grid">
+                                <div class="detail-item">
+                                    <span class="detail-label">سعر البيع (مفرق)</span>
+                                    <span class="detail-value text-success">{{ product.retail_price }}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">سعر البيع (نصف جملة)</span>
+                                    <span class="detail-value text-success">{{ product.semi_wholesale_price }}</span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">سعر البيع (جملة)</span>
+                                    <span class="detail-value text-success">{{ product.wholesale_price }}</span>
+                                </div>
+                            </div>
+
+                            <!-- عرض أسعار العروض (إذا وجدت) -->
+                            {% if product.offer_1_price > 0 or product.offer_2_price > 0 or product.offer_3_price > 0 or product.offer_4_price > 0 or product.offer_5_price > 0 or product.offer_6_price > 0 %}
+                            <div style="margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px dashed #eee;">
+                                <span class="detail-label" style="display:block; margin-bottom: 0.4rem;">أسعار العروض النشطة:</span>
+                                {% if product.offer_1_price > 0 %}<span class="offer-badge">عرض 1: {{ product.offer_1_price }}</span>{% endif %}
+                                {% if product.offer_2_price > 0 %}<span class="offer-badge">عرض 2: {{ product.offer_2_price }}</span>{% endif %}
+                                {% if product.offer_3_price > 0 %}<span class="offer-badge">عرض 3: {{ product.offer_3_price }}</span>{% endif %}
+                                {% if product.offer_4_price > 0 %}<span class="offer-badge">عرض 4: {{ product.offer_4_price }}</span>{% endif %}
+                                {% if product.offer_5_price > 0 %}<span class="offer-badge">عرض 5: {{ product.offer_5_price }}</span>{% endif %}
+                                {% if product.offer_6_price > 0 %}<span class="offer-badge">عرض 6: {{ product.offer_6_price }}</span>{% endif %}
+                            </div>
+                            {% endif %}
+
+                            <!-- عرض الباركودات -->
+                            {% if product.active_barcodes %}
+                            <div>
+                                <div style="margin-bottom: 0.3rem; color:#7f8c8d; font-size:0.8rem;">باركودات نشطة:</div>
+                                {% for barcode in product.active_barcodes %}
+                                    <span class="barcode-tag {% if barcode.is_primary %}primary{% endif %}">
+                                        {% if barcode.is_primary %}<i class="fas fa-star fa-xs" style="color:#f1c40f;"></i> {% endif %}
+                                        {{ barcode.barcode_in }}
+                                    </span>
+                                {% endfor %}
+                            </div>
+                            {% endif %}
+
                         </div>
                     </td>
                 </tr>
-                {% endif %}
                 {% empty %}
                 <tr class="empty-row">
-                    <td colspan="8">
+                    <td colspan="9"> <!-- تم تعديل الرقم من 8 إلى 9 -->
                         <i class="fas fa-inbox"></i>
                         لا توجد منتجات.
                     </td>
@@ -356,13 +465,10 @@
 </div>
 
 <script>
-    // وظيفة فتح وإغلاق صف الباركود
+    // وظيفة فتح وإغلاق صف التفاصيل
     function toggleAccordion(id) {
         const element = document.getElementById(id);
         if (element) {
-            // إغلاق أي آخر مفتوح (اختياري)
-            // document.querySelectorAll('.accordion-content.show').forEach(el => el.classList.remove('show'));
-            
             const content = element.querySelector('.accordion-content');
             if(content) content.classList.toggle('show');
         }
@@ -375,17 +481,17 @@
         
         rows.forEach(row => {
             let name = row.querySelector('.product-name-cell').innerText.toLowerCase();
-            let barcodeSection = row.nextElementSibling; // صف الباركود التالي إن وجد
+            let detailsSection = row.nextElementSibling; // صف التفاصيل التالي إن وجد
             
             if (name.includes(filter)) {
                 row.style.display = '';
-                if(barcodeSection && barcodeSection.classList.contains('accordion-row')) {
-                    barcodeSection.style.display = ''; // إظهار صف الباركود إذا ظهر المنتج
+                if(detailsSection && detailsSection.classList.contains('accordion-row')) {
+                    detailsSection.style.display = ''; 
                 }
             } else {
                 row.style.display = 'none';
-                if(barcodeSection && barcodeSection.classList.contains('accordion-row')) {
-                    barcodeSection.style.display = 'none'; // إخفاء صف الباركود
+                if(detailsSection && detailsSection.classList.contains('accordion-row')) {
+                    detailsSection.style.display = 'none'; 
                 }
             }
         });

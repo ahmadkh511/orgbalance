@@ -228,6 +228,9 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from accounts.views import is_staff_user
 
 
+import datetime  # تأكد من وجود هذا السطر في أعلى الملف
+from django.utils.dateparse import parse_date
+
 
 # ==================== إعدادات التسجيل ====================
 logger = logging.getLogger(__name__)
@@ -1024,10 +1027,6 @@ def purch_edit(request, slug):
 
 
 
-
-
-
-
 @login_required
 def purch_delete(request, slug):
     """حذف فاتورة شراء مع الباركودات المرتبطة"""
@@ -1071,8 +1070,6 @@ def purch_delete(request, slug):
 #================================================
 #                 مرتجع المشتريات              #
 # ===============================================
-
-
 
 
 @login_required
@@ -1551,8 +1548,6 @@ def purchase_return_delete_view(request, slug):
     }
     
     return render(request, 'invoice/purchase/purchase_return_confirm_delete.html', context)
-
-
 
 
 
@@ -2100,9 +2095,6 @@ def cash_dashboard(request):
     return render(request, 'invoice/cashbox/cash_dashboard.html', context)
 
 
-import datetime  # تأكد من وجود هذا السطر في أعلى الملف
-from django.utils.dateparse import parse_date
-
 @login_required
 def cash_transaction_list(request):
     """عرض قائمة حركات الصندوق"""
@@ -2167,11 +2159,18 @@ def cash_transaction_list(request):
     is_balance_negative = overall_balance < 0
 
     today = timezone.now().date()
-    today_transactions = CashTransaction.objects.filter(transaction_date__date=today)
+    # === الحل الآمن لمطابقة تاريخ اليوم (بدون مشاكل التوقيت) ===
+    start_of_today = timezone.make_aware(datetime.datetime.combine(today, datetime.time.min))
+    end_of_today = timezone.make_aware(datetime.datetime.combine(today, datetime.time.max))
+    today_transactions = CashTransaction.objects.filter(
+        transaction_date__gte=start_of_today,
+        transaction_date__lte=end_of_today
+    )
     today_in = today_transactions.aggregate(total=Sum('amount_in'))['total'] or Decimal('0.00')
     today_out = today_transactions.aggregate(total=Sum('amount_out'))['total'] or Decimal('0.00')
     today_net = today_in - today_out
-    
+
+
     context = {
         'title': 'حركات الصندوق',
         'CashTransaction': CashTransaction,

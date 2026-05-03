@@ -239,6 +239,10 @@ from types import SimpleNamespace
 from decimal import Decimal
 from .models import Purch
 
+
+
+from django.contrib.auth.decorators import login_required, permission_required
+
 # ==================== إعدادات التسجيل ====================
 logger = logging.getLogger(__name__)
 
@@ -249,7 +253,11 @@ logger = logging.getLogger(__name__)
 # ===============================================
 
 
+from django.contrib.auth.decorators import login_required, permission_required
+from django.core.exceptions import PermissionDenied
+
 @login_required
+@permission_required('invoice.view_purch', raise_exception=True)
 def purch_list(request):
     """عرض قائمة فواتير الشراء مع فرز وترقيم صفحات"""
     from django.db.models import Sum, Avg, Count, Q
@@ -340,7 +348,9 @@ def purch_list(request):
         'title': _('فواتير الشراء')
     })
 
+
 @login_required
+@permission_required('invoice.add_purch', raise_exception=True)
 def purch_create(request):
     """
     إنشاء فاتورة شراء جديدة.
@@ -563,13 +573,14 @@ def purch_create(request):
                 messages.error(request, e.messages[0] if e.messages else str(e))
             except Exception as e:
                 logger.error(f"خطأ في إنشاء فاتورة الشراء: {e}")
-                messages.error(request, f'حدث خطأ غير متوقع: {str(e)}')
+                # 🔒 تحسين أمني: عدم كشف تفاصيل الخطأ للمستخدم
+                messages.error(request, 'حدث خطأ غير متوقع أثناء إنشاء الفاتورة، يرجى المحاولة مرة أخرى.')
         
         # ============================================================
         # [3] التعامل مع حالات الخطأ (إعادة عرض الصفحة بالبيانات)
         # ============================================================
         
-        # إذا وصلنا到这里، فهناك خطأ ما (فورم غير صالح أو أخطاء باركود)
+        # إذا وصلنا إلى هنا، فهناك خطأ ما (فورم غير صالح أو أخطاء باركود)
         if not form.is_valid() or not formset.is_valid() or barcode_errors:
             # إضافة أخطاء الباركود إلى رسائل النظام
             for error in barcode_errors:
@@ -616,12 +627,17 @@ def purch_create(request):
 
 
 @login_required
+@permission_required('invoice.view_purch', raise_exception=True)
 def purch_detail(request, slug):
     """
     عرض تفاصيل فاتورة المشتريات
     مع تمييز الباركودات المرتجعة بلون خاص
     """
     purchase = get_object_or_404(Purch, slug=slug)
+    
+    # 🔒 إصلاح الثغرة الأمنية (IDOR): التأكد من ملكية المستخدم للفاتورة
+    if purchase.created_by and purchase.created_by != request.user and not request.user.is_superuser:
+        raise PermissionDenied(_("ليس لديك صلاحية للوصول إلى هذه الفاتورة"))
     
     reset_date = purchase.last_updated
     items_for_template = []
@@ -692,6 +708,7 @@ def purch_detail(request, slug):
 
 
 @login_required
+@permission_required('invoice.change_purch', raise_exception=True)
 def purch_edit(request, slug):
     """تعديل فاتورة شراء موجودة مع تحديث دقيق للمخزون والباركودات - النسخة الأمنية"""
     from django.db.models import Q, Sum
@@ -1026,11 +1043,15 @@ def purch_edit(request, slug):
     })
 
 
-
 @login_required
+@permission_required('invoice.delete_purch', raise_exception=True)
 def purch_delete(request, slug):
     """حذف فاتورة شراء مع الباركودات المرتبطة"""
     purchase = get_object_or_404(Purch, slug=slug)
+    
+    # 🔒 إصلاح الثغرة الأمنية (IDOR): التأكد من ملكية المستخدم للفاتورة
+    if purchase.created_by and purchase.created_by != request.user and not request.user.is_superuser:
+        raise PermissionDenied(_("ليس لديك صلاحية للوصول إلى هذه الفاتورة"))
     
     if request.method == 'POST':
         try:
@@ -1057,7 +1078,8 @@ def purch_delete(request, slug):
                 
         except Exception as e:
             logger.error(f"Error deleting purchase {purchase.uniqueId}: {str(e)}")
-            messages.error(request, f'حدث خطأ أثناء حذف الفاتورة: {str(e)}')
+            # 🔒 تحسين أمني: عدم كشف تفاصيل الخطأ للمستخدم
+            messages.error(request, 'حدث خطأ أثناء حذف الفاتورة، يرجى المحاولة مرة أخرى.')
     
     return render(request, 'invoice/purchase/purch_confirm_delete.html', {
         'purchase': purchase,
@@ -1555,11 +1577,10 @@ def purchase_return_delete_view(request, slug):
 #               المواد  و الباركود            #
 # ===============================================
 
-
 @login_required
+@permission_required('invoice.view_product', raise_exception=True)
 def product_list(request):
     """عرض قائمة المنتجات مع فلترة الباركودات النشطة فقط"""
-    # تعديل السطر التالي: استبدال is_active=True بـ status='active'
     products = Product.objects.all().prefetch_related(
         Prefetch('barcodes', queryset=Barcode.objects.filter(status='active'), to_attr='active_barcodes')
     ).order_by('-date_created')
@@ -1571,6 +1592,7 @@ def product_list(request):
 
 
 @login_required
+@permission_required('invoice.add_product', raise_exception=True)
 def product_create(request):
     """إنشاء مادة جديدة - معلومات فقط"""
     print("✅ تم الدخول إلى product_create")
@@ -1591,11 +1613,9 @@ def product_create(request):
         
         try:
             with transaction.atomic():
-                # إنشاء المادة بالقيم الافتراضية
                 product = Product(
                     product_name=product_name,
                     product_description=product_description,
-                    # قيم افتراضية للحقول المالية
                     purch_price=Decimal('0.00'),
                     sale_price=Decimal('0.00'),
                     current_stock_quantity=Decimal('0.00'),
@@ -1609,30 +1629,26 @@ def product_create(request):
                     wholesale_price=Decimal('0.00')
                 )
                 
-                # إضافة الصورة إذا وجدت
                 if product_image:
                     product.product_image = product_image
                 
-                # حفظ المادة
                 product.save()
                 print(f"✅ تم حفظ المادة: {product.product_name} - ID: {product.id} - Slug: {product.slug}")
                 
                 messages.success(request, _('تم إنشاء المادة بنجاح'))
-                # تأكد من استخدام invoice: في redirect
                 return redirect('invoice:product_list')
                 
         except Exception as e:
             print(f"❌ خطأ في الحفظ: {str(e)}")
             messages.error(request, f'حدث خطأ أثناء إنشاء المادة: {str(e)}')
     
-    # GET request - عرض النموذج
     return render(request, 'invoice/products/product_form.html', {
         'title': _('إنشاء مادة جديدة')
     })
 
 
-
 @login_required
+@permission_required('invoice.view_product', raise_exception=True)
 def product_detail(request, slug):
     """عرض تفاصيل المنتج"""
     product = get_object_or_404(Product, slug=slug)
@@ -1646,6 +1662,7 @@ def product_detail(request, slug):
 
 
 @login_required
+@permission_required('invoice.delete_product', raise_exception=True)
 def product_delete(request, slug):
     """حذف منتج"""
     product = get_object_or_404(Product, slug=slug)
@@ -1661,9 +1678,9 @@ def product_delete(request, slug):
         'title': _('تأكيد حذف المنتج')
     })
 
-#--------------
 
 @login_required
+@permission_required('invoice.change_product', raise_exception=True)
 def product_edit(request, slug):
     """تعديل مادة موجودة - معلومات فقط"""
     product = get_object_or_404(Product, slug=slug)
@@ -1673,7 +1690,7 @@ def product_edit(request, slug):
         product_name = request.POST.get('product_name')
         product_description = request.POST.get('product_description', '')
         product_image = request.FILES.get('product_image')
-        remove_image = request.POST.get('remove_image')  # للتحقق من إزالة الصورة
+        remove_image = request.POST.get('remove_image')
         
         if not product_name:
             messages.error(request, _('اسم المادة مطلوب'))
@@ -1684,23 +1701,18 @@ def product_edit(request, slug):
         
         try:
             with transaction.atomic():
-                # تحديث المعلومات الأساسية فقط
                 product.product_name = product_name
                 product.product_description = product_description
                 
-                # معالجة الصورة
                 if remove_image == 'true':
-                    # حذف الصورة القديمة إذا وجدت
                     if product.product_image:
                         product.product_image.delete()
                     product.product_image = None
                 elif product_image:
-                    # حذف الصورة القديمة إذا وجدت
                     if product.product_image:
                         product.product_image.delete()
                     product.product_image = product_image
                 
-                # حفظ التغييرات
                 product.save()
                 print(f"✅ تم تحديث المادة: {product.product_name}")
                 
@@ -1711,12 +1723,10 @@ def product_edit(request, slug):
             print(f"❌ خطأ في تحديث المادة: {str(e)}")
             messages.error(request, f'حدث خطأ أثناء تحديث المادة: {str(e)}')
     
-    # في حالة طلب GET، اعرض النموذج مع البيانات الحالية للمنتج
     return render(request, 'invoice/products/product_edit.html', {
         'product': product,
         'title': _('تعديل المادة')
     })
-
 #--------------
 
 

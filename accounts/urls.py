@@ -86,9 +86,10 @@ urlpatterns = [
 
 
 
-    path('users/', views.user_list_view, name='user_list'),  # لعرض قائمة المستخدمين
-    path('users/<int:pk>/edit/', views.user_edit_view, name='user_edit'),  # لتحرير مستخدم معين
-    path('permissions/', views.permissions_view, name='permissions'),  # لصفحة الصلاحيات (تجريبية)
+    path('users/', views.user_list_view, name='user_list'),
+    path('users/<int:pk>/edit/', views.user_edit_view, name='user_edit'),
+    path('permissions/', views.permissions_view, name='permissions'),
+    path('api/group-permissions/<int:group_id>/', views.group_permissions_api, name='group_permissions_api'),  # <-- أضف هذا السطر
 
     path('company-settings/', views.company_settings_view, name='company_settings'),
 

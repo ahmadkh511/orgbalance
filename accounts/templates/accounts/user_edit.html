@@ -23,6 +23,70 @@
     .btn-primary:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); color: white; }
     .btn-outline-secondary { border: 1px solid var(--aqua-3); color: var(--aqua-4); border-radius: 8px; }
     .btn-outline-secondary:hover { background: var(--aqua-1); border-color: var(--aqua-4); color: var(--text-dark); }
+
+    /* === تنسيقات كارت الصلاحيات === */
+    .group-select-wrapper { position: relative; }
+    .group-select-wrapper .form-select {
+        padding-right: 40px;
+        appearance: none;
+        -webkit-appearance: none;
+        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%230097a7' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+        background-repeat: no-repeat;
+        background-position: left 12px center;
+        background-size: 16px 12px;
+    }
+    .group-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        background: var(--aqua-1);
+        color: var(--text-dark);
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 500;
+        border: 1px solid var(--aqua-2);
+    }
+    .permissions-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        padding: 4px;
+    }
+    .permissions-grid::-webkit-scrollbar { width: 4px; }
+    .permissions-grid::-webkit-scrollbar-track { background: var(--aqua-1); border-radius: 4px; }
+    .permissions-grid::-webkit-scrollbar-thumb { background: var(--aqua-3); border-radius: 4px; }
+    .perm-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        background: #f8fffe;
+        border: 1px solid var(--aqua-2);
+        border-radius: 8px;
+        font-size: 0.8rem;
+        color: #495057;
+        transition: all 0.2s;
+    }
+    .perm-item:hover { background: var(--aqua-1); }
+    .perm-item i { color: var(--aqua-4); font-size: 0.7rem; }
+    .no-group-hint {
+        text-align: center;
+        padding: 20px;
+        color: #adb5bd;
+        font-size: 0.85rem;
+    }
+    .no-group-hint i { font-size: 1.5rem; display: block; margin-bottom: 8px; }
+    .group-header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
 </style>
 {% endblock %}
 
@@ -76,6 +140,62 @@
                     </div>
                 </div>
 
+                <!-- ===== كارت الصلاحيات والمجموعات (جديد) ===== -->
+                <div class="info-card">
+                    <div class="card-header">
+                        <h5><i class="fas fa-shield-alt me-2"></i>الصلاحيات والمجموعات</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label for="group_select" class="form-label">المجموعة</label>
+                            <div class="group-select-wrapper">
+                                <select name="group_id" id="group_select" class="form-select">
+                                    <option value="">— بدون مجموعة —</option>
+                                    {% for group in available_groups %}
+                                    <option value="{{ group.id }}" {% if group.id == current_group_id %}selected{% endif %}>
+                                        {{ group.name }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="form-text">اختر مجموعة الصلاحيات التي سيتبع لها هذا المستخدم</div>
+                        </div>
+
+                        <div id="permissions-display">
+                            {% if current_group %}
+                            <div class="group-header-row">
+                                <span class="form-label mb-0">صلاحيات المجموعة:</span>
+                                <span class="group-badge">
+                                    <i class="fas fa-tag"></i>
+                                    {{ current_group.name }}
+                                </span>
+                            </div>
+                            {% if current_group_permissions %}
+                            <div class="permissions-grid">
+                                {% for perm in current_group_permissions %}
+                                <div class="perm-item">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>{{ perm.name }}</span>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <div class="no-group-hint">
+                                <i class="fas fa-info-circle"></i>
+                                هذه المجموعة لا تحتوي على صلاحيات محددة بعد
+                            </div>
+                            {% endif %}
+                            {% else %}
+                            <div class="no-group-hint" id="no-group-hint">
+                                <i class="fas fa-layer-group"></i>
+                                اختر مجموعة لعرض صلاحياتها
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <!-- ===== نهاية كارت الصلاحيات ===== -->
+
                 <div class="info-card">
                     <div class="card-header"><h5><i class="fas fa-camera me-2"></i>الصورة الشخصية</h5></div>
                     <div class="card-body text-center">
@@ -89,7 +209,6 @@
                 <div class="info-card">
                     <div class="card-header"><h5><i class="fas fa-users me-2"></i>نوع المستخدم</h5></div>
                     <div class="card-body">
-                        <!-- يظهر فقط للادمن بفضل is_admin=True -->
                         <div class="form-check form-switch mb-3">
                             {{ profile_form.is_customer }}
                             <label class="form-check-label" for="{{ profile_form.is_customer.id_for_label }}">
@@ -196,6 +315,67 @@ document.addEventListener('DOMContentLoaded', function() {
                 reader.onload = e => img.src = e.target.result;
                 reader.readAsDataURL(this.files[0]);
             }
+        });
+    }
+
+    // عرض الصلاحيات عند تغيير المجموعة (AJAX)
+    const groupSelect = document.getElementById('group_select');
+    const permsDisplay = document.getElementById('permissions-display');
+
+    if (groupSelect && permsDisplay) {
+        groupSelect.addEventListener('change', function() {
+            const groupId = this.value;
+            if (!groupId) {
+                permsDisplay.innerHTML = `
+                    <div class="no-group-hint">
+                        <i class="fas fa-layer-group"></i>
+                        اختر مجموعة لعرض صلاحياتها
+                    </div>`;
+                return;
+            }
+
+            // إظهار حالة التحميل
+            permsDisplay.innerHTML = `
+                <div class="no-group-hint">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    جارٍ تحميل الصلاحيات...
+                </div>`;
+
+            fetch(`/accounts/api/group-permissions/${groupId}/`)
+                .then(response => {
+                    if (!response.ok) throw new Error('خطأ في الجلب');
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.permissions.length === 0) {
+                        permsDisplay.innerHTML = `
+                            <div class="group-header-row">
+                                <span class="form-label mb-0">صلاحيات المجموعة:</span>
+                                <span class="group-badge"><i class="fas fa-tag"></i>${data.group_name}</span>
+                            </div>
+                            <div class="no-group-hint">
+                                <i class="fas fa-info-circle"></i>
+                                هذه المجموعة لا تحتوي على صلاحيات محددة بعد
+                            </div>`;
+                    } else {
+                        let permsHtml = data.permissions.map(p =>
+                            `<div class="perm-item"><i class="fas fa-check-circle"></i><span>${p}</span></div>`
+                        ).join('');
+                        permsDisplay.innerHTML = `
+                            <div class="group-header-row">
+                                <span class="form-label mb-0">صلاحيات المجموعة:</span>
+                                <span class="group-badge"><i class="fas fa-tag"></i>${data.group_name}</span>
+                            </div>
+                            <div class="permissions-grid">${permsHtml}</div>`;
+                    }
+                })
+                .catch(() => {
+                    permsDisplay.innerHTML = `
+                        <div class="no-group-hint" style="color: #dc3545;">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            تعذر تحميل الصلاحيات
+                        </div>`;
+                });
         });
     }
 });

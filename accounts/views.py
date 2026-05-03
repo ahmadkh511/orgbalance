@@ -33,6 +33,39 @@ from django.contrib import messages
 from django.core.cache import cache
 
 
+
+import requests
+from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+
+# ==========================================
+# استيراد CompanySettings من نفس التطبيق (accounts)
+# ==========================================
+from .models import CompanySettings
+
+
+# أضف هذه الاستيرادات مع باقي الاستيرادات في أعلى الملف
+from invoice.models import (
+    Purch, Sale, SaleReturn, PurchaseReturn, 
+    Product, WebsiteOrder
+)
+from django.utils import timezone
+from datetime import timedelta
+from decimal import Decimal
+from django.db.models import Sum
+from django.urls import reverse
+
+from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.models import User
+from django.contrib import messages
+# تأكد من استيراد is_staff_user من ملف permissions أو utils الخاص بك
+# from .utils import is_staff_user 
+
+from django.contrib.auth.models import Group, Permission
+from django.http import JsonResponse
+
+
 # ============================================
 # الصفحة الرئيسية (index)
 # ============================================
@@ -386,45 +419,6 @@ class TermsView(TemplateView):
 
 
 
-# ============================================
-# لوحة التحكم (dashboard)
-# ============================================
-
-
-import requests
-from django.shortcuts import render, redirect
-from django.contrib.auth.decorators import login_required
-
-# ==========================================
-# استيراد CompanySettings من نفس التطبيق (accounts)
-# ==========================================
-from .models import CompanySettings
-
-
-# أضف هذه الاستيرادات مع باقي الاستيرادات في أعلى الملف
-from invoice.models import (
-    Purch, Sale, SaleReturn, PurchaseReturn, 
-    Product, WebsiteOrder
-)
-from django.utils import timezone
-from datetime import timedelta
-from decimal import Decimal
-from django.db.models import Sum
-from django.urls import reverse
-
-
-
-# ==========================================
-# دالة لجلب البيانات المتكاملة
-# ==========================================
-
-
-
-# ==========================================
-# أفضل المنتجات مبيعاً
-# ==========================================
-
-
 
 # ============================================
 # رفع شعار الشركة (API endpoint)
@@ -642,6 +636,8 @@ def is_staff_user(user):
     """التحقق من أن المستخدم موظف"""
     return user.is_staff
 
+
+
 @login_required
 @user_passes_test(is_staff_user)
 def user_list_view(request):
@@ -655,13 +651,6 @@ def user_list_view(request):
 
 
 
-from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
-from django.contrib import messages
-# تأكد من استيراد is_staff_user من ملف permissions أو utils الخاص بك
-# from .utils import is_staff_user 
-
 
 @login_required
 @user_passes_test(is_staff_user)
@@ -669,32 +658,75 @@ def user_edit_view(request, pk):
     """تحرير بيانات مستخدم معين"""
     user = get_object_or_404(User, pk=pk)
     profile, created = Profile.objects.get_or_create(user=user)
-    
+
+    # تحضير المجموعات المتاحة
+    available_groups = Group.objects.all().order_by('name')
+
+    # تحديد المجموعة الحالية للمستخدم (أول مجموعة إن وُجدت)
+    current_group = user.groups.first()
+    current_group_id = current_group.id if current_group else None
+    current_group_permissions = []
+    if current_group:
+        current_group_permissions = current_group.permissions.select_related('content_type').all()
+
     if request.method == 'POST':
         form = UserUpdateForm(request.POST, instance=user)
-        # تمرير is_admin=True لتفعيل حقول (زبون/مورد) وإخفاء حقول الاسم
-        profile_form = UserProfileUpdateForm(request.POST, request.FILES, instance=profile, is_admin=True)
-        
+        profile_form = UserProfileUpdateForm(
+            request.POST, request.FILES, instance=profile, is_admin=True
+        )
+
         if form.is_valid() and profile_form.is_valid():
             form.save()
             profile_form.save()
-            messages.success(request, f'تم تحديث بيانات المستخدم "{user.username}" بنجاح.')
+
+            # === حفظ المجموعة ===
+            group_id = request.POST.get('group_id', '')
+            user.groups.clear()  # إزالة جميع المجموعات الحالية
+            if group_id:
+                try:
+                    group = Group.objects.get(id=group_id)
+                    user.groups.add(group)
+                except Group.DoesNotExist:
+                    pass
+
+            messages.success(
+                request,
+                f'تم تحديث بيانات المستخدم "{user.username}" بنجاح.'
+            )
             return redirect('accounts:user_list')
     else:
         form = UserUpdateForm(instance=user)
-        # تمرير is_admin=True هنا أيضاً عند عرض الصفحة لأول مرة
         profile_form = UserProfileUpdateForm(instance=profile, is_admin=True)
-        
+
     context = {
         'form': form,
         'profile_form': profile_form,
         'user_to_edit': user,
         'profile': profile,
-        'title': f'تحرير المستخدم: {user.username}'
+        'title': f'تحرير المستخدم: {user.username}',
+        # متغيرات المجموعات
+        'available_groups': available_groups,
+        'current_group': current_group,
+        'current_group_id': current_group_id,
+        'current_group_permissions': current_group_permissions,
     }
     return render(request, 'accounts/user_edit.html', context)
 
 
+@login_required
+@user_passes_test(is_staff_user)
+def group_permissions_api(request, group_id):
+    """عرض صلاحيات مجموعة معينة (JSON) — يُستخدم عبر AJAX"""
+    try:
+        group = Group.objects.get(id=group_id)
+        permissions = group.permissions.select_related('content_type').all()
+        perms_list = [perm.name for perm in permissions]
+        return JsonResponse({
+            'group_name': group.name,
+            'permissions': perms_list,
+        })
+    except Group.DoesNotExist:
+        return JsonResponse({'error': 'المجموعة غير موجودة'}, status=404)
 
 
 # ============================================

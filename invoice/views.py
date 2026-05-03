@@ -1094,10 +1094,18 @@ def purch_delete(request, slug):
 # ===============================================
 
 
+from django.contrib.auth.decorators import login_required, permission_required
+from django.core.exceptions import PermissionDenied
+
 @login_required
+@permission_required('invoice.add_purchasereturn', raise_exception=True)
 def purch_return_create_view(request, slug):
     """إنشاء مرتجع فاتورة مشتريات - نسخة محسنة"""
     original_purchase = get_object_or_404(Purch, slug=slug)
+    
+    # 🔒 إغلاق ثغرة IDOR: التأكد من أن المستخدم يملك الفاتورة الأصلية
+    if original_purchase.created_by and original_purchase.created_by != request.user and not request.user.is_superuser:
+        raise PermissionDenied(_("ليس لديك صلاحية لإنشاء مرتجع لهذه الفاتورة"))
     
     # التحقق من وجود بنود في الفاتورة
     if not original_purchase.purchitem_set.exists():
@@ -1309,7 +1317,7 @@ def purch_return_create_view(request, slug):
                                     
                             except Exception as e:
                                 logger.error(f"خطأ في تسجيل حركة الصندوق: {e}")
-                                messages.warning(request, f'تم إنشاء المرتجع ولكن حدث خطأ في تسجيل حركة الصندوق')
+                                messages.warning(request, 'تم إنشاء المرتجع ولكن حدث خطأ في تسجيل حركة الصندوق')
                         else:
                             messages.info(request, 
                                 f'ℹ️ تم إنشاء فاتورة المرتجع {purchase_return.uniqueId} بدون استلام نقدية')
@@ -1321,7 +1329,8 @@ def purch_return_create_view(request, slug):
                     
             except Exception as e:
                 logger.error(f"خطأ في إنشاء المرتجع: {str(e)}", exc_info=True)
-                messages.error(request, f'حدث خطأ أثناء إنشاء المرتجع: {str(e)}')
+                # 🔒 تحسين أمني: عدم كشف تفاصيل الخطأ
+                messages.error(request, 'حدث خطأ غير متوقع أثناء إنشاء المرتجع، يرجى المحاولة مرة أخرى.')
         else:
             # عرض الأخطاء
             error_messages = []
@@ -1448,6 +1457,7 @@ def purch_return_create_view(request, slug):
 
 
 @login_required
+@permission_required('invoice.view_purchasereturn', raise_exception=True)
 def purchase_return_list_view(request):
     """قائمة مرتجعات المشتريات"""
     # فلترة البحث
@@ -1510,16 +1520,21 @@ def purchase_return_list_view(request):
 
 
 @login_required
+@permission_required('invoice.view_purchasereturn', raise_exception=True)
 def purchase_return_detail_view(request, slug):
     """عرض تفاصيل مرتجع المشتريات"""
     purchase_return = get_object_or_404(
         PurchaseReturn.objects.select_related(
             'original_purchase', 'created_by', 'purch_supplier'
         ).prefetch_related(
-            'return_items__product',  # المفتاح: return_items هو الاسم الصحيح
+            'return_items__product',
         ),
         slug=slug
     )
+    
+    # 🔒 إغلاق ثغرة IDOR: التأكد من أن المستخدم هو من أنشأ هذا المرتجع
+    if purchase_return.created_by and purchase_return.created_by != request.user and not request.user.is_superuser:
+        raise PermissionDenied(_("ليس لديك صلاحية للوصول إلى هذا المرتجع"))
     
     # حساب الإحصائيات - استخدام return_items
     items = purchase_return.return_items.all()
@@ -1539,9 +1554,14 @@ def purchase_return_detail_view(request, slug):
 
 
 @login_required
+@permission_required('invoice.delete_purchasereturn', raise_exception=True)
 def purchase_return_delete_view(request, slug):
     """حذف مرتجع المشتريات"""
     purchase_return = get_object_or_404(PurchaseReturn, slug=slug)
+    
+    # 🔒 إغلاق ثغرة IDOR: التأكد من أن المستخدم هو من أنشأ هذا المرتجع
+    if purchase_return.created_by and purchase_return.created_by != request.user and not request.user.is_superuser:
+        raise PermissionDenied(_("ليس لديك صلاحية لحذف هذا المرتجع"))
     
     if request.method == 'POST':
         try:
@@ -1561,7 +1581,8 @@ def purchase_return_delete_view(request, slug):
                 return redirect('invoice:purchase_return_list')
                 
         except Exception as e:
-            messages.error(request, f'حدث خطأ أثناء حذف المرتجع: {str(e)}')
+            # 🔒 تحسين أمني: عدم كشف تفاصيل الخطأ
+            messages.error(request, 'حدث خطأ أثناء حذف المرتجع، يرجى المحاولة مرة أخرى.')
             return redirect('invoice:purchase_return_detail', slug=slug)
     
     context = {
@@ -1570,7 +1591,6 @@ def purchase_return_delete_view(request, slug):
     }
     
     return render(request, 'invoice/purchase/purchase_return_confirm_delete.html', context)
-
 
 
 #================================================
@@ -2920,7 +2940,6 @@ def sale_create(request):
     })
 
 
-
 #----------------
 
 def handle_sale_cash_transaction(sale):
@@ -2946,9 +2965,7 @@ def handle_sale_cash_transaction(sale):
             existing.delete()
 
 
-
 #------------------
-
 
 
 @login_required
@@ -3273,7 +3290,6 @@ def sale_edit(request, slug):
 
 
 
-
 @login_required
 def sale_list(request):
     """عرض قائمة فواتير البيع"""
@@ -3297,8 +3313,6 @@ def sale_list(request):
 
 
 #--seale return---
-
-
 
 
 

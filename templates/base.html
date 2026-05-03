@@ -581,14 +581,14 @@
                             </ul>
                         </li>
                         <li class="has-submenu {% if 'orders' in request.resolver_match.url_name or 'store' in request.resolver_match.url_name or 'checkout' in request.resolver_match.url_name or 'notification' in request.resolver_match.url_name %}active{% endif %}">
-                            <a href="#"><i class="fas fa-store nav-icon"></i>المتجر الإلكتروني</a>
+                            <a href="#"><i class="fas fa-store nav-icon"></i>المتجرالإلكتروني</a>
                             <ul class="menu-submenu">
                                 <li class="{% if request.resolver_match.url_name == 'orders_list' %}sub-active{% endif %}"><a href="{% url 'invoice:orders_list' %}"><i class="fas fa-inbox"></i>إدارة الطلبات</a></li>
                                 <li class="{% if request.resolver_match.url_name == 'admin_stock_notifications' %}sub-active{% endif %}"><a href="{% url 'invoice:admin_stock_notifications' %}"><i class="fas fa-bell"></i>تنبيهات المخزون</a></li>
                                 <li class="{% if request.resolver_match.url_name == 'notification_archive' %}sub-active{% endif %}"><a href="{% url 'invoice:notification_archive' %}"><i class="fas fa-history"></i>أرشيف الإشعارات</a></li>
                                 <li class="{% if request.resolver_match.url_name == 'control_store' %}sub-active{% endif %}"><a href="{% url 'invoice:control_store' %}"><i class="fas fa-sliders-h"></i>إدارة المتجر</a></li>
                                 <li class="{% if request.resolver_match.url_name == 'store_front' %}sub-active{% endif %}"><a href="{% url 'invoice:store_front' %}" target="_blank" rel="nofollow noopener noreferrer"><i class="fas fa-external-link-alt"></i>واجهة المتجر</a></li>
-                                <li class="{% if request.resolver_match.url_name == 'checkout' %}sub-active{% endif %}"><a href="{% url 'invoice:checkout' %}"><i class="fas fa-credit-card"></i>صفحة الدفع</a></li>
+                                <li class="{% if request.resolver_match.url_name == 'checkout' %}sub-active{% endif %}"><a href="{% url 'invoice:checkout' %}"><i class="fas fa-credit-card"></i>صفحة1 الدفع</a></li>
                             </ul>
                         </li>
                         <li class="has-submenu {% if 'cash' in request.resolver_match.url_name %}active{% endif %}">

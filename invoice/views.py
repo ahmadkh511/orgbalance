@@ -4989,15 +4989,24 @@ def dead_stocks_report(request):
 
 
 
+0000
 
 
 
 
+# shooping 
 
 
-# shopping --------------
+from django.contrib.auth.decorators import login_required, permission_required
+from django.views.decorators.http import require_POST
+
+# **********************************************************************************
+# ==================== القسم الأول: واجهة المتجر (للزبون) ====================
+# ==================== لا يحتاج تسجيل دخول أو صلاحيات ========================
+# **********************************************************************************
 
 
+# هذه الدالة مكررة  يجب التاكد ثم الحذف   api_update_product_category
 
 # ===============================================
 #  دوال مساعدة (Helpers)
@@ -5101,11 +5110,6 @@ def prepare_section_data(section):
             'show_old_price': item.show_old_price
         } for item in section.items.all()]
     }
-
-
-# ===============================================
-#  واجهة المتجر (للزبون)
-# ===============================================
 
 
 # ===============================================
@@ -5289,7 +5293,7 @@ def add_to_cart(request):
             'cart_count': cart.items.count()
         })
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء الإضافة للسلة'}, status=400)
 
 
 def update_cart_item(request):
@@ -5321,7 +5325,7 @@ def update_cart_item(request):
             'cart_count': cart.items.count()
         })
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء تحديث السلة'}, status=400)
 
 
 def remove_from_cart(request):
@@ -5345,7 +5349,7 @@ def remove_from_cart(request):
             'cart_count': cart.items.count()
         })
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء الحذف'}, status=400)
 
 
 def cart_detail(request):
@@ -5434,14 +5438,58 @@ def place_order_view(request):
         return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء معالجة الطلب، يرجى المحاولة مرة أخرى.'}, status=500)
 
 
-
-
 # ===============================================
-#  لوحة تحكم المدير
+#  API: طلب إشعار (من الواجهة)
 # ===============================================
 
+def api_request_notification(request):
+    """حفظ طلب الإشعار عند نفاد المخزون"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid Request'}, status=405)
+    
+    try:
+        data = json.loads(request.body)
+        product_id = data.get('product_id')
+        email = data.get('email')
+        
+        if not product_id or not email:
+            return JsonResponse({'success': False, 'message': 'البيانات ناقصة'}, status=400)
+
+        product = get_object_or_404(Product, id=product_id)
+
+        # التعديل الهام: استخدام الحقل الصحيح من الموديل current_stock_quantity
+        if product.current_stock_quantity > 0:
+            return JsonResponse({'success': False, 'message': 'المنتج متوفر الآن!'})
+
+        # حفظ الطلب
+        notification, created = StockNotification.objects.get_or_create(
+            product=product,
+            email=email
+        )
+        
+        if created:
+            msg = 'تم تسجيل طلبك! سنخبرك فور توفر المادة.'
+        else:
+            msg = 'أنت مسجل مسبقاً في قائمة الانتظار لهذا المنتج.'
+            
+        return JsonResponse({'success': True, 'message': msg})
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء التسجيل'}, status=500)
 
 
+
+
+
+
+# **********************************************************************************
+# ==================== القسم الثاني: لوحة تحكم المدير ========================
+# ==================== يتطلب تسجيل دخول وصلاحيات دقيقة =====================
+# **********************************************************************************
+
+
+
+@login_required
 def prepare_product_data(product, setting=None):
     """تجهيز بيانات المنتج للعرض في لوحة التحكم"""
     if setting is None:
@@ -5463,6 +5511,7 @@ def prepare_product_data(product, setting=None):
 
 
 @login_required
+@permission_required('invoice.change_productstoresetting', raise_exception=True)
 def control_store(request):
     """لوحة تحكم المتجر الإلكتروني"""
     banners = StoreBanner.objects.all().order_by('order', '-created_at')
@@ -5496,6 +5545,7 @@ def control_store(request):
 
 
 @login_required
+@permission_required('invoice.change_product', raise_exception=True)
 @require_POST
 def api_update_product_category(request, product_id):
     """تحديث تصنيف المنتج من لوحة التحكم"""
@@ -5512,7 +5562,7 @@ def api_update_product_category(request, product_id):
         product.save()
         return JsonResponse({'success': True, 'message': 'تم تحديث التصنيف'})
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء التحديث'}, status=500)
 
 
 
@@ -5523,6 +5573,7 @@ def api_update_product_category(request, product_id):
 # ===============================================
 
 @login_required
+@permission_required('invoice.change_productstoresetting', raise_exception=True)
 @require_POST
 def api_update_badge_image(request, product_id):
     """تحديث صورة الشعار للمنتج"""
@@ -5536,10 +5587,11 @@ def api_update_badge_image(request, product_id):
             return JsonResponse({'success': True, 'image_url': settings_obj.badge_image.url})
         return JsonResponse({'success': False, 'message': 'لم يتم إرسال صورة'}, status=400)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء رفع الصورة'}, status=500)
 
 
 @login_required
+@permission_required('invoice.change_productstoresetting', raise_exception=True)
 @require_POST
 def api_update_product_store_settings(request, product_id):
     """تحديث إعدادات المتجر للمنتج (الظهور، القسم، الترتيب)"""
@@ -5561,7 +5613,7 @@ def api_update_product_store_settings(request, product_id):
             return JsonResponse({'success': True, 'new_value': value})
         return JsonResponse({'success': False, 'message': 'حقل غير مسموح'}, status=400)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء التحديث'}, status=500)
 
 
 # ===============================================
@@ -5569,6 +5621,7 @@ def api_update_product_store_settings(request, product_id):
 # ===============================================
 
 @login_required
+@permission_required('invoice.add_storebanner', raise_exception=True)
 @require_POST
 def api_add_banner(request):
     """إضافة بنر جديد"""
@@ -5587,10 +5640,11 @@ def api_add_banner(request):
         )
         return JsonResponse({'success': True, 'banner_id': banner.id})
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء إضافة البنر'}, status=500)
 
 
 @login_required
+@permission_required('invoice.change_storebanner', raise_exception=True)
 @require_POST
 def api_update_banner(request, banner_id):
     """تحديث بنر"""
@@ -5607,10 +5661,11 @@ def api_update_banner(request, banner_id):
         banner.save()
         return JsonResponse({'success': True})
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء تحديث البنر'}, status=500)
 
 
 @login_required
+@permission_required('invoice.delete_storebanner', raise_exception=True)
 def delete_banner(request, banner_id):
     """حذف بنر"""
     get_object_or_404(StoreBanner, id=banner_id).delete()
@@ -5623,6 +5678,7 @@ def delete_banner(request, banner_id):
 # ===============================================
 
 @login_required
+@permission_required('invoice.add_storesection', raise_exception=True)
 @require_POST
 def api_add_section(request):
     """إنشاء قسم جديد"""
@@ -5638,10 +5694,11 @@ def api_add_section(request):
         )
         return JsonResponse({'success': True, 'section_id': section.id})
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء إنشاء القسم'}, status=400)
 
 
 @login_required
+@permission_required('invoice.change_storesection', raise_exception=True)
 @require_POST
 def api_update_section(request, section_id):
     """تحديث بيانات القسم"""
@@ -5658,6 +5715,7 @@ def api_update_section(request, section_id):
 
 
 @login_required
+@permission_required('invoice.delete_storesection', raise_exception=True)
 @require_POST
 def api_delete_section(request, section_id):
     """حذف قسم"""
@@ -5669,6 +5727,7 @@ def api_delete_section(request, section_id):
 
 
 @login_required
+@permission_required('invoice.add_productsectionitem', raise_exception=True)
 @require_POST
 def api_add_product_to_section(request, section_id):
     """إضافة منتج إلى قسم"""
@@ -5687,10 +5746,11 @@ def api_add_product_to_section(request, section_id):
             return JsonResponse({'success': True, 'item_id': item.id})
         return JsonResponse({'success': False, 'message': 'المنتج مضاف مسبقاً'}, status=400)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء الإضافة'}, status=400)
 
 
 @login_required
+@permission_required('invoice.delete_productsectionitem', raise_exception=True)
 @require_POST
 def api_remove_product_from_section(request, section_id, item_id):
     """حذف منتج من قسم"""
@@ -5704,6 +5764,7 @@ def api_remove_product_from_section(request, section_id, item_id):
 
 
 @login_required
+@permission_required('invoice.change_product', raise_exception=True)
 @require_POST
 def api_update_product_category(request, product_id):
     """تحديث تصنيف المنتج"""
@@ -5722,7 +5783,8 @@ def api_update_product_category(request, product_id):
         product.save()
         return JsonResponse({'success': True, 'message': 'تم تحديث التصنيف'})
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء التحديث'}, status=500)
+
 # ===============================================
 #  إدارة الطلبات (عرض وتحويل لفاتورة)
 # ===============================================
@@ -5730,7 +5792,7 @@ def api_update_product_category(request, product_id):
 
 
 @login_required
-@user_passes_test(is_staff_user)
+@permission_required('invoice.view_websiteorder', raise_exception=True)
 def orders_list_view(request):
     """قائمة طلبات المتجر للمدير"""
     return render(request, 'invoice/store/admin_orders_list.html', {
@@ -5740,10 +5802,8 @@ def orders_list_view(request):
 
 
 
-
-
 @login_required
-@user_passes_test(is_staff_user)
+@permission_required('invoice.view_websiteorder', raise_exception=True)
 def order_detail_view(request, order_id):
     """تفاصيل طلب معين"""
     order = get_object_or_404(WebsiteOrder, id=order_id)
@@ -5754,10 +5814,8 @@ def order_detail_view(request, order_id):
 
 
 
-
-
 @login_required
-@user_passes_test(is_staff_user)
+@permission_required('invoice.change_websiteorder', raise_exception=True)
 def convert_order_to_invoice(request, order_id):
     """تحويل طلب المتجر إلى فاتورة بيع في نظام المحاسبة"""
     order = get_object_or_404(WebsiteOrder, id=order_id)
@@ -5812,50 +5870,10 @@ def convert_order_to_invoice(request, order_id):
             return redirect('invoice:sale_detail', slug=sale.slug)
 
     except Exception as e:
-        messages.error(request, f'حدث خطأ أثناء التحويل: {str(e)}')
+        messages.error(request, 'حدث خطأ أثناء التحويل، يرجى المحاولة مرة أخرى.')
         return redirect('invoice:order_detail', order_id=order.id)
 
 #=====
-
-# ===============================================
-#  API: طلب إشعار (من الواجهة)
-# ===============================================
-
-def api_request_notification(request):
-    """حفظ طلب الإشعار عند نفاد المخزون"""
-    if request.method != 'POST':
-        return JsonResponse({'success': False, 'message': 'Invalid Request'}, status=405)
-    
-    try:
-        data = json.loads(request.body)
-        product_id = data.get('product_id')
-        email = data.get('email')
-        
-        if not product_id or not email:
-            return JsonResponse({'success': False, 'message': 'البيانات ناقصة'}, status=400)
-
-        product = get_object_or_404(Product, id=product_id)
-
-        # التعديل الهام: استخدام الحقل الصحيح من الموديل current_stock_quantity
-        if product.current_stock_quantity > 0:
-            return JsonResponse({'success': False, 'message': 'المنتج متوفر الآن!'})
-
-        # حفظ الطلب
-        notification, created = StockNotification.objects.get_or_create(
-            product=product,
-            email=email
-        )
-        
-        if created:
-            msg = 'تم تسجيل طلبك! سنخبرك فور توفر المادة.'
-        else:
-            msg = 'أنت مسجل مسبقاً في قائمة الانتظار لهذا المنتج.'
-            
-        return JsonResponse({'success': True, 'message': msg})
-        
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
-
 
 # ===============================================
 #  إدارة: قائمة المنتجات المنتظرة
@@ -5863,6 +5881,7 @@ def api_request_notification(request):
 
 
 @login_required
+@permission_required('invoice.view_stocknotification', raise_exception=True)
 def admin_stock_notifications(request):
     """
     عرض قائمة بالمنتجات التي ينتظرها أشخاص (فقط الطلبات غير المرسلة)
@@ -5870,7 +5889,6 @@ def admin_stock_notifications(request):
     # ==========================================
     # التعديل هنا: إضافة .filter(is_sent=False)
     # ==========================================
-    # هذا الشرط سيجعل الدالة تجلب فقط الطلبات التي لم يتم إرسالها بعد
     raw_stats = StockNotification.objects.filter(is_sent=False).values('product__id', 'product__product_name', 'product__product_image').annotate(
         waiting_count=Count('id')
     ).order_by('-waiting_count')
@@ -5907,6 +5925,7 @@ def admin_stock_notifications(request):
 # دالة إرسال الإشعارات (محدثة لتدعم الأرشيف)
 # ==========================================================
 @login_required
+@permission_required('invoice.change_stocknotification', raise_exception=True)
 @require_POST
 def admin_send_notification(request, product_id):
     """
@@ -5924,7 +5943,7 @@ def admin_send_notification(request, product_id):
         try:
             connection, from_email = get_active_email_connection()
         except Exception as e:
-            return JsonResponse({'success': False, 'message': f'تعذر العثور على إعدادات البريد: {str(e)}'})
+            return JsonResponse({'success': False, 'message': 'تعذر العثور على إعدادات البريد'})
 
         if connection and from_email:
             # 3. حفظ الإعدادات الحالية لاستعادتها لاحقاً
@@ -5987,10 +6006,11 @@ def admin_send_notification(request, product_id):
 
     except Exception as e:
         print(f"Error sending notification: {str(e)}")
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء إرسال الإشعار'}, status=500)
 
 
 @login_required
+@permission_required('invoice.view_stocknotification', raise_exception=True)
 def admin_notification_archive(request):
     """عرض أرشيف الإشعارات التي تم إرسالها"""
     archive = StockNotification.objects.filter(is_sent=True).select_related('product').order_by('-sent_at')
@@ -6003,6 +6023,7 @@ def admin_notification_archive(request):
 
 
 @login_required
+@permission_required('invoice.change_stocknotification', raise_exception=True)
 @require_POST
 def admin_undo_archive_notification(request):
     """
@@ -6037,7 +6058,7 @@ def admin_undo_archive_notification(request):
     except Exception as e:
         # طباعة الخطأ في السيرفر للتصحيح
         print(f"Error in undo_archive: {str(e)}")
-        response_data['message'] = f'خطأ داخلي: {str(e)}'
+        response_data['message'] = 'خطأ داخلي أثناء استعادة التنبيه'
 
     return JsonResponse(response_data)
 
@@ -6046,6 +6067,7 @@ def admin_undo_archive_notification(request):
 
 
 @login_required
+@permission_required('invoice.view_flashdeal', raise_exception=True)
 def api_flash_deals(request):
     """قائمة عروض الفلاش"""
     try:
@@ -6095,10 +6117,11 @@ def api_flash_deals(request):
             })
         return JsonResponse(data, safe=False)
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': 'حدث خطأ أثناء جلب العروض'}, status=500)
 
 
 @login_required
+@permission_required('invoice.add_flashdeal', raise_exception=True)
 @require_POST
 def api_add_flash_deal(request):
     """إضافة عرض فلاش"""
@@ -6125,12 +6148,13 @@ def api_add_flash_deal(request):
         )
         return JsonResponse({'success': True, 'message': 'تم إضافة العرض بنجاح', 'deal_id': deal.id})
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء إضافة العرض'}, status=400)
 
 
 
 
 @login_required
+@permission_required('invoice.change_flashdeal', raise_exception=True)
 @require_POST
 def api_toggle_flash_deal(request, deal_id):
     """تفعيل/تعطيل عرض فلاش"""
@@ -6140,10 +6164,11 @@ def api_toggle_flash_deal(request, deal_id):
         deal.save()
         return JsonResponse({'success': True, 'is_active': deal.is_active})
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=400)
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء تحديث العرض'}, status=400)
 
 
 @login_required
+@permission_required('invoice.delete_flashdeal', raise_exception=True)
 def api_delete_flash_deal(request, deal_id):
     """حذف عرض فلاش"""
     get_object_or_404(FlashDeal, id=deal_id).delete()
@@ -6161,6 +6186,7 @@ def api_delete_flash_deal(request, deal_id):
 # ===============================================
 
 @login_required
+@permission_required('invoice.add_storeannouncement', raise_exception=True)
 @require_POST
 def api_add_announcement(request):
     """إضافة إعلان مع دعم اختيار الأيقونة"""
@@ -6181,10 +6207,11 @@ def api_add_announcement(request):
     except json.JSONDecodeError:
         return JsonResponse({'success': False, 'message': 'بيانات غير صالحة'}, status=400)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء إضافة الإعلان'}, status=500)
 
 
 @login_required
+@permission_required('invoice.delete_storeannouncement', raise_exception=True)
 @require_POST
 def api_delete_announcement(request, ann_id):
     """حذف إعلان - تم إضافة @require_POST ومعالجة أفضل"""
@@ -6195,11 +6222,12 @@ def api_delete_announcement(request, ann_id):
     except StoreAnnouncement.DoesNotExist:
         return JsonResponse({'success': False, 'message': 'الإعلان غير موجود'}, status=404)
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء حذف الإعلان'}, status=500)
 
 
 
 @login_required
+@permission_required('invoice.change_storefeatureicon', raise_exception=True)
 @require_POST
 def api_update_feature(request, feature_id):
     """تحديث عنوان الأيقونة"""
@@ -6211,6 +6239,4 @@ def api_update_feature(request, feature_id):
         feature.save()
         return JsonResponse({'success': True})
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
-
-
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء التحديث'}, status=500)

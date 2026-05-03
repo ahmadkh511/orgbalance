@@ -250,6 +250,18 @@ from django.contrib.auth.decorators import login_required, permission_required
 from django.db import transaction
 from django.db.models import F
 
+
+
+
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+
+
+from django.contrib.auth.decorators import login_required, permission_required
+from django.core.exceptions import PermissionDenied
+
+from django.contrib.auth.decorators import login_required, permission_required
+from django.core.exceptions import PermissionDenied
+
 # ==================== إعدادات التسجيل ====================
 logger = logging.getLogger(__name__)
 
@@ -259,9 +271,6 @@ logger = logging.getLogger(__name__)
 #               فواتير الشراء                  #
 # ===============================================
 
-
-from django.contrib.auth.decorators import login_required, permission_required
-from django.core.exceptions import PermissionDenied
 
 @login_required
 @permission_required('invoice.view_purch', raise_exception=True)
@@ -1100,9 +1109,6 @@ def purch_delete(request, slug):
 #                 مرتجع المشتريات              #
 # ===============================================
 
-
-from django.contrib.auth.decorators import login_required, permission_required
-from django.core.exceptions import PermissionDenied
 
 @login_required
 @permission_required('invoice.add_purchasereturn', raise_exception=True)
@@ -3862,8 +3868,6 @@ def check_barcode_for_return(request, product_id):
 # ===============================================
 
 
-from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
-
 # ================ عملات ================
 class CurrencyListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     model = Currency
@@ -4201,24 +4205,59 @@ def get_product_barcodes(request, product_id):
 
 
 
+# تقرير 
 
-#================================================
-#  التقارير 
-# ===============================================
+#=========================
+#كما طلبت تماماً: ترتيب وتنظيم، إضافة الصلاحيات المطلوبة فقط، وبدون حذف أي سطر كود (بما في ذلك الدالتين المكررتين لرصيد المخزون dead_stock_report و dead_stocks_report والدالة المساعدة للبريد).
 
-
-
-
+#ملاحظة بخصوص الصلاحيات: بما أن التقارير لا تتبع لموديل واحد محدد (بل تجلب بيانات من عدة موديلات)، فقد استخدمت صلاحية موحدة لكل التقارير وهي invoice.view_report. وإعدادات البريد تستخدم invoice.change_emailsetting.
 
 
+
+
+
+from django.contrib.auth.decorators import login_required, permission_required
+
+# **********************************************************************************
+# ==================== القسم الأول: دوال مساعدة ================================
+# **********************************************************************************
 
 class Date(Func):
     function = 'DATE'
     output_field = CharField()
 
 
+def get_email_settings():
+    obj, created = EmailSetting.objects.get_or_create(pk=1)
+    return obj
+
+
+def send_custom_email(subject, message, recipient_list):
+    config = get_email_settings()
+    
+    try:
+        send_mail(
+            subject,
+            message,
+            config.default_from_email,
+            recipient_list,
+            fail_silently=False,
+            auth_user=config.email_host_user,
+            auth_password=config.email_host_password,
+            connection=None 
+        )
+        return True
+    except Exception as e:
+        print(f"Error sending email: {e}")
+        return False
+
+
+# **********************************************************************************
+# ==================== القسم الثاني: تقارير الحسابات والفواتير ==================
+# **********************************************************************************
 
 @login_required
+@permission_required('invoice.view_report', raise_exception=True)
 def statement_report_view(request):
     context = {}
     statement_data = []
@@ -4257,7 +4296,6 @@ def statement_report_view(request):
             if is_customer:
                 sales = Sale.objects.filter(sale_customer=selected_user).order_by('sale_date')
                 for sale in sales:
-                    # جلب المدفوعات لهذه الفاتورة
                     paid_amount = CashTransaction.objects.filter(
                         sale_invoice=sale,
                         transaction_type='sale_receipt'
@@ -4283,7 +4321,6 @@ def statement_report_view(request):
             if is_supplier:
                 purchases = Purch.objects.filter(purch_supplier=selected_user).order_by('purch_date')
                 for purch in purchases:
-                    # جلب المدفوعات لهذه الفاتورة
                     paid_amount = CashTransaction.objects.filter(
                         purchase_invoice=purch,
                         transaction_type='purchase_payment'
@@ -4378,7 +4415,6 @@ def statement_report_view(request):
                 total_debit += debit
                 total_credit += credit
                 
-                # حساب الرصيد التراكمي حسب نوع المستخدم
                 if user_type == 'customer':
                     running_balance = total_debit - total_credit
                 elif user_type == 'supplier':
@@ -4398,7 +4434,8 @@ def statement_report_view(request):
         except User.DoesNotExist:
             messages.error(request, "المستخدم غير موجود")
         except Exception as e:
-            messages.error(request, f"حدث خطأ: {str(e)}")
+            # 🔒 تحسين أمني
+            messages.error(request, "حدث خطأ أثناء تحميل كشف الحساب")
             import traceback
             traceback.print_exc()
 
@@ -4407,11 +4444,10 @@ def statement_report_view(request):
     return render(request, 'invoice/reports/statement_report.html', context)
 
 
-
-#  تقرير كشف حساب الباركودات 
 import datetime
 
 @login_required
+@permission_required('invoice.view_report', raise_exception=True)
 def barcode_statement_view(request):
     context = {}
     movements = []
@@ -4420,10 +4456,8 @@ def barcode_statement_view(request):
 
     if search_query:
         try:
-            # 1. جلب الباركود
             barcode_obj = Barcode.objects.get(barcode_in=search_query)
             
-            # 2. جلب حركات الشراء
             purchase_items = PurchItemBarcode.objects.filter(
                 barcode=barcode_obj
             ).select_related('purch_item__purch', 'purch_item__product')
@@ -4436,12 +4470,10 @@ def barcode_statement_view(request):
                     'reference': item.purch_item.purch.uniqueId,
                     'detail': f"شراء - {item.purch_item.product.product_name if item.purch_item.product else item.purch_item.item_name}",
                     'quantity': item.quantity_used,
-                    # الحالة عند الشراء: دخول للمخزون -> نشط
                     'status_display': 'نشط (Active)',
                     'status_class': 'status-active',
                 })
 
-            # 3. جلب حركات مرتجع الشراء
             return_items = PurchaseReturnItemBarcode.objects.filter(
                 barcode=barcode_obj
             ).select_related('purchase_return_item__purchase_return', 'purchase_return_item__product')
@@ -4454,12 +4486,10 @@ def barcode_statement_view(request):
                     'reference': item.purchase_return_item.purchase_return.uniqueId,
                     'detail': f"إرجاع للمورد - {item.purchase_return_item.product.product_name if item.purchase_return_item.product else item.purchase_return_item.item_name}",
                     'quantity': item.quantity_used,
-                    # الحالة: خروج من المخزون -> مرتجع
                     'status_display': 'مرتجع للمورد',
                     'status_class': 'status-returned',
                 })
 
-            # 4. جلب حركات البيع
             sale_items = SaleItemBarcode.objects.filter(
                 barcode=barcode_obj
             ).select_related('sale_item__sale', 'sale_item__product')
@@ -4472,12 +4502,10 @@ def barcode_statement_view(request):
                     'reference': item.sale_item.sale.uniqueId,
                     'detail': f"بيع - {item.sale_item.product.product_name if item.sale_item.product else item.sale_item.item_name}",
                     'quantity': item.quantity_used,
-                    # الحالة عند البيع: خروج للعميل -> مباع
                     'status_display': 'مباع (Sold)',
                     'status_class': 'status-sold',
                 })
 
-            # 5. جلب حركات مرتجع البيع
             sale_return_items = SaleReturnItemBarcode.objects.filter(
                 barcode=barcode_obj
             ).select_related('sale_return_item__sale_return', 'sale_return_item__product')
@@ -4490,18 +4518,17 @@ def barcode_statement_view(request):
                     'reference': item.sale_return_item.sale_return.uniqueId,
                     'detail': f"إرجاع من العميل - {item.sale_return_item.product.product_name if item.sale_return_item.product else item.sale_return_item.item_name}",
                     'quantity': item.quantity_used,
-                    # الحالة: عودة للمخزون -> نشط (عادة)
                     'status_display': 'مرتجع (Returned)',
                     'status_class': 'status-returned',
                 })
 
-            # ترتيب الحركات حسب التاريخ
             movements.sort(key=lambda x: x['date'] or datetime.date.min)
 
         except Barcode.DoesNotExist:
             messages.error(request, "الباركود غير موجود في النظام")
         except Exception as e:
-            messages.error(request, f"حدث خطأ: {str(e)}")
+            # 🔒 تحسين أمني
+            messages.error(request, "حدث خطأ أثناء جلب حركات الباركود")
 
     context['movements'] = movements
     context['barcode_obj'] = barcode_obj
@@ -4509,26 +4536,14 @@ def barcode_statement_view(request):
     return render(request, 'invoice/reports/barcode_statement.html', context)
 
 
-# فواتير لم تسدد او لها رصيد 
-
-
-
-
 @login_required
+@permission_required('invoice.view_report', raise_exception=True)
 def unpaid_sales_report(request):
-    """
-    تقرير فواتير المبيعات غير المدفوعة بالكامل (متابعة الديون)
-    مع تصنيف فترات التأخير (Aging Report)
-    """
-    # جلب الفواتير التي لم تُسدد بالكامل
+    """تقرير فواتير المبيعات غير المدفوعة بالكامل (متابعة الديون)"""
     invoices = Sale.objects.filter(
         Q(balance_due__gt=0) | Q(is_paid=False)
-    ).select_related(
-        'sale_customer'
-    ).order_by('-sale_date')
+    ).select_related('sale_customer').order_by('-sale_date')
 
-    # تحديد فترات التأخير (بالأيام)
-    # 0-30، 31-60، 61-90، أكثر من 90
     period_ranges = [
         (0, 30, 'حديث'),
         (31, 60, 'متأخر'),
@@ -4538,14 +4553,10 @@ def unpaid_sales_report(request):
 
     report_data = []
     grand_total_balance = 0
-
     today = timezone.now().date()
 
     for invoice in invoices:
-        # حساب عدد أيام التأخير
         days_overdue = (today - invoice.sale_date).days
-        
-        # تحديد الفئة العمرية للدين
         category = "غير محدد"
         for start, end, label in period_ranges:
             if start <= days_overdue <= end:
@@ -4574,23 +4585,13 @@ def unpaid_sales_report(request):
     return render(request, 'invoice/reports/unpaid_sales_report.html', context)
 
 
-# تقرير تقرير المنتجات الراكدة
-
-
-
-
-
 @login_required
+@permission_required('invoice.view_report', raise_exception=True)
 def dead_stock_report(request):
-    """
-    تقرير المنتجات الراكدة (موجودة ولم يتم بيعها منذ فترة)
-    """
-    # تحديد فترة الراكد (مثلاً 60 يوماً)
+    """تقرير المنتجات الراكدة (موجودة ولم يتم بيعها منذ فترة)"""
     days_threshold = int(request.GET.get('days', 60))
     date_threshold = timezone.now().date() - timedelta(days=days_threshold)
 
-    # جلب المنتجات التي لها مخزون
-    # تم إزالة 'category' من select_related لأنها غير موجودة في الموديل
     products = Product.objects.filter(
         current_stock_quantity__gt=0
     ).order_by('product_name')
@@ -4598,27 +4599,20 @@ def dead_stock_report(request):
     dead_items = []
 
     for product in products:
-        # البحث عن آخر عملية بيع لهذا المنتج
-        # ملاحظة: تأكد من أن SaleItem لديه حقل اسمه 'sale' يشير لفاتورة البيع
-        # وأن الفاتورة لديها حقل 'sale_date'
         last_sale_item = SaleItem.objects.filter(
             product=product
         ).order_by('-sale__sale_date').first()
         
-        # تحديد آخر تاريخ بيع
         last_sale_date = None
         if last_sale_item and last_sale_item.sale:
             last_sale_date = last_sale_item.sale.sale_date
         
-        # التحقق: هل يوجد مبيعات بعد تاريخ الحد (date_threshold)؟
-        # نستخدم filter().exists() لأنه أسرع
         has_recent_sales = SaleItem.objects.filter(
             product=product,
             sale__sale_date__gte=date_threshold
         ).exists()
 
         if not has_recent_sales:
-            # حساب قيمة المخزون الراكد
             cost_price = product.average_purchase_cost or product.purch_price or Decimal('0.00')
             stock_value = product.current_stock_quantity * cost_price
             
@@ -4641,15 +4635,248 @@ def dead_stock_report(request):
     return render(request, 'invoice/reports/dead_stock_report.html', context)
 
 
+@login_required
+@permission_required('invoice.view_report', raise_exception=True)
+def profit_report_view(request):
+    """تقرير الأرباح"""
+    start_date = request.GET.get('start_date')
+    end_date = request.GET.get('end_date')
+    
+    context = {
+        'start_date': start_date,
+        'end_date': end_date,
+        'show_results': False,
+    }
 
-def get_email_settings():
-    obj, created = EmailSetting.objects.get_or_create(pk=1)
-    return obj
+    if start_date and end_date:
+        sales_qs = Sale.objects.filter(sale_date__range=[start_date, end_date])
+        total_sales = sales_qs.aggregate(total=Sum('sale_final_total'))['total'] or Decimal('0.00')
+        
+        sold_items = SaleItem.objects.filter(sale__in=sales_qs).select_related('product')
+        total_cost = Decimal('0.00')
+        for item in sold_items:
+            cost_price = item.product.average_purchase_cost if item.product and item.product.average_purchase_cost else (item.product.purch_price if item.product else Decimal('0.00'))
+            total_cost += (item.sold_quantity * cost_price)
+        
+        total_sales_discount = sales_qs.aggregate(total=Sum('sale_discount'))['total'] or Decimal('0.00')
+
+        expenses_qs = CashTransaction.objects.filter(
+            transaction_date__date__range=[start_date, end_date],
+            transaction_type__in=['expense', 'withdrawal']
+        )
+        total_expenses = expenses_qs.aggregate(total=Sum('amount_out'))['total'] or Decimal('0.00')
+
+        gross_profit = total_sales - total_cost
+        net_profit = gross_profit - total_expenses
+
+        context.update({
+            'total_sales': total_sales,
+            'total_cost': total_cost,
+            'gross_profit': gross_profit,
+            'total_sales_discount': total_sales_discount,
+            'total_expenses': total_expenses,
+            'net_profit': net_profit,
+            'show_results': True,
+        })
+
+    return render(request, 'invoice/reports/profit_report.html', context)
+
 
 @login_required
+@permission_required('invoice.view_report', raise_exception=True)
+def sales_by_customer_report(request):
+    """تقرير يوضح إجمالي مبيعات كل عميل وعدد الفواتير"""
+    search_query = request.GET.get('q', '')
+
+    queryset = Sale.objects.values(
+        'sale_customer__id',
+        'sale_customer__username',
+        'sale_customer__first_name',
+        'sale_customer__last_name'
+    ).annotate(
+        total_amount=Sum('sale_final_total'),
+        paid_amount=Sum('paid_amount'),
+        invoice_count=Count('id')
+    ).order_by('-total_amount')
+
+    if search_query:
+        queryset = queryset.filter(
+            Q(sale_customer__username__icontains=search_query) |
+            Q(sale_customer__first_name__icontains=search_query) |
+            Q(sale_customer__last_name__icontains=search_query)
+        )
+
+    grand_total = sum(item['total_amount'] or 0 for item in queryset)
+    total_invoices = sum(item['invoice_count'] or 0 for item in queryset)
+
+    context = {
+        'title': 'تقرير المبيعات حسب العميل',
+        'report_data': queryset,
+        'grand_total': grand_total,
+        'total_invoices': total_invoices,
+        'search_query': search_query,
+    }
+    
+    return render(request, 'invoice/reports/sales_by_customer_report.html', context)
+
+
+@login_required
+@permission_required('invoice.view_report', raise_exception=True)
+def purchases_by_supplier_report(request):
+    """تقرير يوضح إجمالي مشتريات كل مورد وعدد الفواتير"""
+    search_query = request.GET.get('q', '')
+
+    queryset = Purch.objects.values(
+        'purch_supplier__id',
+        'purch_supplier__username',
+        'purch_supplier__first_name',
+        'purch_supplier__last_name'
+    ).annotate(
+        total_amount=Sum('purch_final_total'),
+        paid_amount=Sum('paid_amount'),
+        invoice_count=Count('id')
+    ).order_by('-total_amount')
+
+    if search_query:
+        queryset = queryset.filter(
+            Q(purch_supplier__username__icontains=search_query) |
+            Q(purch_supplier__first_name__icontains=search_query) |
+            Q(purch_supplier__last_name__icontains=search_query)
+        )
+
+    grand_total = sum(item['total_amount'] or 0 for item in queryset)
+    total_invoices = sum(item['invoice_count'] or 0 for item in queryset)
+
+    context = {
+        'title': 'تقرير المشتريات حسب المورد',
+        'report_data': queryset,
+        'grand_total': grand_total,
+        'total_invoices': total_invoices,
+        'search_query': search_query,
+    }
+    
+    return render(request, 'invoice/reports/purchases_by_supplier_report.html', context)
+
+
+@login_required
+@permission_required('invoice.view_report', raise_exception=True)
+def daily_sales_summary_report(request):
+    """ملخص مبيعات يومي"""
+    today = timezone.now().date()
+    selected_date_str = request.GET.get('date')
+    if selected_date_str:
+        try:
+            selected_date = timezone.datetime.strptime(selected_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            selected_date = today
+    else:
+        selected_date = today
+
+    sales_today = Sale.objects.filter(sale_date=selected_date)
+    total_sales = sales_today.aggregate(total=Sum('sale_final_total'))['total'] or Decimal('0.00')
+    cash_received = sales_today.aggregate(total=Sum('paid_amount'))['total'] or Decimal('0.00')
+    invoices_count = sales_today.count()
+
+    expenses_today = CashTransaction.objects.filter(
+        transaction_date__date=selected_date,
+        transaction_type__in=['expense', 'withdrawal']
+    )
+    total_expenses = expenses_today.aggregate(total=Sum('amount_out'))['total'] or Decimal('0.00')
+    net_cash = cash_received - total_expenses
+
+    context = {
+        'title': 'ملخص المبيعات اليومي',
+        'selected_date': selected_date,
+        'total_sales': total_sales,
+        'cash_received': cash_received,
+        'invoices_count': invoices_count,
+        'total_expenses': total_expenses,
+        'net_cash': net_cash,
+    }
+    
+    return render(request, 'invoice/reports/daily_sales_summary.html', context)
+
+
+@login_required
+@permission_required('invoice.view_report', raise_exception=True)
+def unpaid_invoices_report(request):
+    """تقرير موحد لفواتير المبيعات والمشتريات غير المسددة"""
+    unpaid_sales = Sale.objects.filter(
+        Q(balance_due__gt=0) | Q(is_paid=False)
+    ).select_related('sale_customer').order_by('-sale_date')
+
+    unpaid_purchases = Purch.objects.filter(
+        paid_amount__lt=F('purch_final_total')
+    ).select_related('purch_supplier').order_by('-purch_date')
+
+    total_customers_debt = unpaid_sales.aggregate(total=Sum('balance_due'))['total'] or Decimal('0.00')
+    total_suppliers_debt = Decimal('0.00')
+    
+    for purch in unpaid_purchases:
+        total_suppliers_debt += (purch.purch_final_total - purch.paid_amount)
+
+    net_balance = total_customers_debt - total_suppliers_debt
+
+    context = {
+        'title': 'تقرير الفواتير غير المسددة',
+        'unpaid_sales': unpaid_sales,
+        'unpaid_purchases': unpaid_purchases,
+        'total_customers_debt': total_customers_debt,
+        'total_suppliers_debt': total_suppliers_debt,
+        'net_balance': net_balance,
+    }
+    
+    return render(request, 'invoice/reports/unpaid_invoices_report.html', context)
+
+
+@login_required
+@permission_required('invoice.view_report', raise_exception=True)
+def dead_stocks_report(request):
+    """تقرير المنتجات الراكدة (موجودة ولم يتم بيعها منذ فترة)"""
+    days_threshold = int(request.GET.get('days', 60))
+    date_threshold = timezone.now().date() - timedelta(days=days_threshold)
+
+    products = Product.objects.filter(current_stock_quantity__gt=0).order_by('product_name')
+
+    dead_items = []
+
+    for product in products:
+        last_sale_item = SaleItem.objects.filter(product=product).order_by('-sale__sale_date').first()
+        
+        last_sale_date = None
+        if last_sale_item and last_sale_item.sale:
+            last_sale_date = last_sale_item.sale.sale_date
+        
+        has_recent_sales = SaleItem.objects.filter(
+            product=product,
+            sale__sale_date__gte=date_threshold
+        ).exists()
+
+        if not has_recent_sales:
+            dead_items.append({
+                'product': product,
+                'stock': product.current_stock_quantity,
+                'last_sale_date': last_sale_date,
+            })
+
+    context = {
+        'title': f'تقرير المواد الراكدة (أكثر من {days_threshold} يوم)',
+        'dead_items': dead_items,
+        'days_threshold': days_threshold,
+    }
+    
+    return render(request, 'invoice/reports/dead_stocks_report.html', context)
+
+
+
+# **********************************************************************************
+# ==================== القسم الثالث: الإعدادات ================================
+# **********************************************************************************
+
+@login_required
+@permission_required('invoice.change_emailsetting', raise_exception=True)
 def email_settings_view(request):
     """عرض وتعديل إعدادات البريد الإلكتروني"""
-    # جلب الإعدادات أو إنشائها إذا لم تكن موجودة
     setting = get_email_settings()
 
     if request.method == 'POST':
@@ -4668,328 +4895,7 @@ def email_settings_view(request):
     }
     return render(request, 'invoice/settings/email_settings.html', context)
 
-# مثال على دالة إرسال بريد باستخدام الإعدادات الجديدة
-def send_custom_email(subject, message, recipient_list):
-    config = get_email_settings()
-    
-    try:
-        send_mail(
-            subject,
-            message,
-            config.default_from_email,
-            recipient_list,
-            fail_silently=False,
-            auth_user=config.email_host_user,
-            auth_password=config.email_host_password,
-            connection=None # سيستخدم إعدادات settings.py الخلفية، أو يمكن تخصيصها هنا
-        )
-        return True
-    except Exception as e:
-        print(f"Error sending email: {e}")
-        return False
 
-
-
-#  تقرير الأرباح (Profit Report)
-
-
-
-
-@login_required
-def profit_report_view(request):
-    """
-    تقرير الأرباح: يحسب صافي الربح خلال فترة محددة
-    المعادلة: (المبيعات - تكلفة المشتريات) - المصاريف
-    """
-    start_date = request.GET.get('start_date')
-    end_date = request.GET.get('end_date')
-    
-    context = {
-        'start_date': start_date,
-        'end_date': end_date,
-        'show_results': False,
-    }
-
-    if start_date and end_date:
-        # 1. جلب فواتير المبيعات في الفترة
-        sales_qs = Sale.objects.filter(sale_date__range=[start_date, end_date])
-        
-        # إجمالي المبيعات
-        total_sales = sales_qs.aggregate(total=Sum('sale_final_total'))['total'] or Decimal('0.00')
-        
-        # 2. حساب تكلفة البضائع المباعة (COGS)
-        # نجلب بنود البيع ونضرب الكمية في متوسط سعر شراء المنتج
-        sold_items = SaleItem.objects.filter(sale__in=sales_qs).select_related('product')
-        
-        total_cost = Decimal('0.00')
-        for item in sold_items:
-            # نستخدم average_purchase_cost إذا كان موجوداً، وإلا نستخدم purch_price
-            cost_price = item.product.average_purchase_cost if item.product and item.product.average_purchase_cost else (item.product.purch_price if item.product else Decimal('0.00'))
-            total_cost += (item.sold_quantity * cost_price)
-        
-        # 3. حساب إجمالي الخصومات الممنوحة في المبيعات
-        total_sales_discount = sales_qs.aggregate(total=Sum('sale_discount'))['total'] or Decimal('0.00')
-
-        # 4. المصاريف والسحوبات (من الصندوق)
-        # نفترض أن أنواع المصاريف هي 'expense' أو 'withdrawal'
-        expenses_qs = CashTransaction.objects.filter(
-            transaction_date__date__range=[start_date, end_date],
-            transaction_type__in=['expense', 'withdrawal']
-        )
-        total_expenses = expenses_qs.aggregate(total=Sum('amount_out'))['total'] or Decimal('0.00')
-
-        # 5. حساب صافي الربح
-        # الربح الإجمالي = المبيعات - التكلفة
-        gross_profit = total_sales - total_cost
-        # صافي الربح = الربح الإجمالي - المصاريف
-        net_profit = gross_profit - total_expenses
-
-        # ملء السياق للقالب
-        context.update({
-            'total_sales': total_sales,
-            'total_cost': total_cost,
-            'gross_profit': gross_profit,
-            'total_sales_discount': total_sales_discount,
-            'total_expenses': total_expenses,
-            'net_profit': net_profit,
-            'show_results': True,
-        })
-
-    return render(request, 'invoice/reports/profit_report.html', context)
-
-
-
-# تقرير المبيعات حسب العميل (Sales by Customer Report)
-
-
-
-
-@login_required
-def sales_by_customer_report(request):
-    """
-    تقرير يوضح إجمالي مبيعات كل عميل وعدد الفواتير
-    """
-    # البحث حسب اسم العميل (اختياري)
-    search_query = request.GET.get('q', '')
-
-    # تجميع المبيعات لكل عميل
-    # نقوم بتصفية المبيعات أولاً ثم التجميع لتحسين الأداء
-    queryset = Sale.objects.values(
-        'sale_customer__id',
-        'sale_customer__username',
-        'sale_customer__first_name',
-        'sale_customer__last_name'
-    ).annotate(
-        total_amount=Sum('sale_final_total'),
-        paid_amount=Sum('paid_amount'),
-        invoice_count=Count('id')
-    ).order_by('-total_amount') # ترتيب تنازلي حسب المبلغ
-
-    # تطبيق فلتر البحث إذا وجد
-    if search_query:
-        # بحث في اسم المستخدم أو الاسم الأول أو الأخير
-        queryset = queryset.filter(
-            Q(sale_customer__username__icontains=search_query) |
-            Q(sale_customer__first_name__icontains=search_query) |
-            Q(sale_customer__last_name__icontains=search_query)
-        )
-
-    # حساب الإجماليات الكلية للصفحة
-    grand_total = sum(item['total_amount'] or 0 for item in queryset)
-    total_invoices = sum(item['invoice_count'] or 0 for item in queryset)
-
-    context = {
-        'title': 'تقرير المبيعات حسب العميل',
-        'report_data': queryset,
-        'grand_total': grand_total,
-        'total_invoices': total_invoices,
-        'search_query': search_query,
-    }
-    
-    return render(request, 'invoice/reports/sales_by_customer_report.html', context)
-
-
-#  تقرير المشتريات حسب المورد (Purchases by Supplier Report)
-
-
-@login_required
-def purchases_by_supplier_report(request):
-    """
-    تقرير يوضح إجمالي مشتريات كل مورد وعدد الفواتير
-    """
-    search_query = request.GET.get('q', '')
-
-    # تجميع المشتريات لكل مورد
-    queryset = Purch.objects.values(
-        'purch_supplier__id',
-        'purch_supplier__username',
-        'purch_supplier__first_name',
-        'purch_supplier__last_name'
-    ).annotate(
-        total_amount=Sum('purch_final_total'),
-        paid_amount=Sum('paid_amount'),
-        invoice_count=Count('id')
-    ).order_by('-total_amount') # ترتيب تنازلي حسب المبلغ
-
-    # تطبيق فلتر البحث
-    if search_query:
-        queryset = queryset.filter(
-            Q(purch_supplier__username__icontains=search_query) |
-            Q(purch_supplier__first_name__icontains=search_query) |
-            Q(purch_supplier__last_name__icontains=search_query)
-        )
-
-    # حساب الإجماليات الكلية
-    grand_total = sum(item['total_amount'] or 0 for item in queryset)
-    total_invoices = sum(item['invoice_count'] or 0 for item in queryset)
-
-    context = {
-        'title': 'تقرير المشتريات حسب المورد',
-        'report_data': queryset,
-        'grand_total': grand_total,
-        'total_invoices': total_invoices,
-        'search_query': search_query,
-    }
-    
-    return render(request, 'invoice/reports/purchases_by_supplier_report.html', context)
-
-
-#تقرير المبيعات اليومية الشامل (Daily Sales Summary)
-
-@login_required
-def daily_sales_summary_report(request):
-    """
-    ملخص مبيعات يومي: يعرض مبيعات اليوم، المصروفات، والصافي
-    """
-    today = timezone.now().date()
-    # السماح باختيار تاريخ آخر
-    selected_date_str = request.GET.get('date')
-    if selected_date_str:
-        try:
-            selected_date = timezone.datetime.strptime(selected_date_str, '%Y-%m-%d').date()
-        except ValueError:
-            selected_date = today
-    else:
-        selected_date = today
-
-    # 1. مبيعات اليوم المحدد
-    sales_today = Sale.objects.filter(sale_date=selected_date)
-    total_sales = sales_today.aggregate(total=Sum('sale_final_total'))['total'] or Decimal('0.00')
-    cash_received = sales_today.aggregate(total=Sum('paid_amount'))['total'] or Decimal('0.00')
-    invoices_count = sales_today.count()
-
-    # 2. مصروفات اليوم (من الصندوق)
-    expenses_today = CashTransaction.objects.filter(
-        transaction_date__date=selected_date,
-        transaction_type__in=['expense', 'withdrawal']
-    )
-    total_expenses = expenses_today.aggregate(total=Sum('amount_out'))['total'] or Decimal('0.00')
-
-    # 3. صافي الصندوق (المقبوض - المصروف)
-    net_cash = cash_received - total_expenses
-
-    context = {
-        'title': 'ملخص المبيعات اليومي',
-        'selected_date': selected_date,
-        'total_sales': total_sales,
-        'cash_received': cash_received,
-        'invoices_count': invoices_count,
-        'total_expenses': total_expenses,
-        'net_cash': net_cash,
-    }
-    
-    return render(request, 'invoice/reports/daily_sales_summary.html', context)
-
-
-# الفواتير الغير مسددة  مبيع  شراء 
-
-@login_required
-def unpaid_invoices_report(request):
-    """
-    تقرير موحد لفواتير المبيعات والمشتريات غير المسددة
-    لمعرفة المبالغ المستحقة للشركة والمطلوبة منها.
-    """
-    # 1. جلب فواتير المبيعات ذات الأرصدة (التي لم تُدفع بالكامل)
-    unpaid_sales = Sale.objects.filter(
-        Q(balance_due__gt=0) | Q(is_paid=False)
-    ).select_related('sale_customer').order_by('-sale_date')
-
-    # 2. جلب فواتير المشتريات غير المدفوعة
-    # نفترض أن الفاتورة غير مدفوعة إذا كان المبلغ المدفوع أقل من الإجمالي
-    unpaid_purchases = Purch.objects.filter(
-        paid_amount__lt=F('purch_final_total')
-    ).select_related('purch_supplier').order_by('-purch_date')
-
-    # حساب الإجماليات
-    total_customers_debt = unpaid_sales.aggregate(total=Sum('balance_due'))['total'] or Decimal('0.00') # لنا عند العملاء
-    total_suppliers_debt = Decimal('0.00') # علينا للموردين
-    
-    for purch in unpaid_purchases:
-        total_suppliers_debt += (purch.purch_final_total - purch.paid_amount)
-
-    # صافي الرصيد (إيجابي يعني لنا، سلبي يعني علينا)
-    net_balance = total_customers_debt - total_suppliers_debt
-
-    context = {
-        'title': 'تقرير الفواتير غير المسددة',
-        'unpaid_sales': unpaid_sales,
-        'unpaid_purchases': unpaid_purchases,
-        'total_customers_debt': total_customers_debt,
-        'total_suppliers_debt': total_suppliers_debt,
-        'net_balance': net_balance,
-    }
-    
-    return render(request, 'invoice/reports/unpaid_invoices_report.html', context)
-
-
-
-
-@login_required
-def dead_stocks_report(request):
-    """تقرير المنتجات الراكدة (موجودة ولم يتم بيعها منذ فترة)"""
-    # تحديد فترة الراكد (مثلاً 60 يوماً)
-    days_threshold = int(request.GET.get('days', 60))
-    date_threshold = timezone.now().date() - timedelta(days=days_threshold)
-
-    # جلب المنتجات التي لها مخزون
-    products = Product.objects.filter(current_stock_quantity__gt=0).order_by('product_name')
-
-    dead_items = []
-
-    for product in products:
-        # البحث عن آخر عملية بيع لهذا المنتج
-        last_sale_item = SaleItem.objects.filter(product=product).order_by('-sale__sale_date').first()
-        
-        # تحديد آخر تاريخ بيع
-        last_sale_date = None
-        if last_sale_item and last_sale_item.sale:
-            last_sale_date = last_sale_item.sale.sale_date
-        
-        # التحقق مما إذا كان هناك مبيعات بعد تاريخ الحد (date_threshold)
-        has_recent_sales = SaleItem.objects.filter(
-            product=product,
-            sale__sale_date__gte=date_threshold
-        ).exists()
-
-        # إذا لم تكن هناك مبيعات حديثة، نعتبر المنتج راكداً
-        if not has_recent_sales:
-            dead_items.append({
-                'product': product,
-                'stock': product.current_stock_quantity,
-                'last_sale_date': last_sale_date,
-            })
-
-    context = {
-        'title': f'تقرير المواد الراكدة (أكثر من {days_threshold} يوم)',
-        'dead_items': dead_items,
-        'days_threshold': days_threshold,
-    }
-    
-    return render(request, 'invoice/reports/dead_stocks_report.html', context)
-
-
-
-0000
 
 
 

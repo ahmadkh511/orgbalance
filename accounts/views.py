@@ -423,6 +423,7 @@ class TermsView(TemplateView):
 # ============================================
 # رفع شعار الشركة (API endpoint)
 # ============================================
+
 @csrf_exempt
 @login_required
 def upload_company_logo(request):
@@ -443,6 +444,7 @@ def upload_company_logo(request):
 # ============================================
 # تسجيل مستخدم جديد (register)
 # ============================================
+
 def register_view(request):
     """
     إنشاء حساب جديد للمستخدم
@@ -463,6 +465,8 @@ def register_view(request):
 # ============================================
 # استعادة كلمة المرور (Password Reset)
 # ============================================
+
+
 class CustomPasswordResetView(SuccessMessageMixin, PasswordResetView):
     """تخصيص عملية استعادة كلمة المرور لاستخدام إعدادات البريد من قاعدة البيانات"""
     template_name = 'accounts/password_reset_form.html'
@@ -505,6 +509,7 @@ class CustomPasswordResetView(SuccessMessageMixin, PasswordResetView):
                 settings.DEFAULT_FROM_EMAIL = old_from
         else:
             return super().form_valid(form)
+
 
 # ============================================
 # الملف الشخصي (profile)

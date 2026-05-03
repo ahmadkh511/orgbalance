@@ -1188,5 +1188,31 @@
     </div>
     {% endif %}
 
+
+
+
+    <!-- كود تطبيق الصلاحيات على الصفحات-->
+
+    <style>
+    /* === سحر إخفاء العناصر الممنوعة (لا تعدل أي كود آخر) === */
+    [data-no-perm] { display: none !important; }
+    
+    /* بالنسبة للأزرار النصية (مثل زر الحذف الخطير) */
+    button[data-no-perm] { display: none !important; }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // يخفي أي عنصر في الصفحة يحتوي على data-no-perm="true"
+    document.querySelectorAll('[data-no-perm="true"]').forEach(el => {
+        el.style.display = 'none';
+        el.remove(); // يزيله من الـ DOM تماماً حتى لا يظهر في مصدر الصفحة
+    });
+});
+</script>
+
+
+
+
 </body>
 </html>

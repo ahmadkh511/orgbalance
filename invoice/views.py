@@ -2368,6 +2368,7 @@ def update_payment_method_cash(request, pk):
 
 
 @login_required
+@permission_required('invoice.view_payment_method', raise_exception=True)
 @require_GET
 def get_payment_method(request, pk):
     """جلب بيانات طريقة الدفع (يُستدعى من داخل نماذج الفواتير)"""
@@ -4185,6 +4186,7 @@ class PriceTypeDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteVie
 
 
 @login_required
+@permission_required('invoice.view_barcode', raise_exception=True)
 def get_product_barcodes(request, product_id):
     """
     API ذكي لجلب الباركودات المتاحة للبيع.
@@ -4973,7 +4975,7 @@ def email_settings_view(request):
 # **********************************************************************************
 
 
-# هذه الدالة مكررة  يجب التاكد ثم الحذف   api_update_product_category
+
 
 # ===============================================
 #  دوال مساعدة (Helpers)
@@ -5041,24 +5043,6 @@ def get_or_create_cart(request):
 
     return cart
 
-
-def prepare_product_data(product, setting=None):
-    """تجهيز بيانات المنتج للعرض في لوحة التحكم (دالة موحدة لتجنب التكرار)"""
-    if setting is None:
-        setting, _ = ProductStoreSetting.objects.get_or_create(product=product)
-    
-    return {
-        'id': product.id,
-        'name': product.product_name,
-        'image': get_product_image_url(product),
-        'price_old': f"{product.wholesale_price:.2f}",
-        'price_new': f"{get_product_price(product):.2f}",
-        'store_section': setting.store_section,
-        'display_order': setting.display_order,
-        'is_visible': setting.is_visible,
-        'badge_url': setting.badge_image.url if setting.badge_image else "",
-        'show_old_price': product.offer_1_price > 0,
-    }
 
 
 def prepare_section_data(section):
@@ -5456,7 +5440,7 @@ def api_request_notification(request):
 
 
 
-@login_required
+
 def prepare_product_data(product, setting=None):
     """تجهيز بيانات المنتج للعرض في لوحة التحكم"""
     if setting is None:
@@ -5508,28 +5492,6 @@ def control_store(request):
     return render(request, 'invoice/store/control_store.html', context)
 
 
-
-
-
-@login_required
-@permission_required('invoice.change_product', raise_exception=True)
-@require_POST
-def api_update_product_category(request, product_id):
-    """تحديث تصنيف المنتج من لوحة التحكم"""
-    try:
-        product = get_object_or_404(Product, id=product_id)
-        data = json.loads(request.body)
-        
-        category_id = data.get('category_id')
-        if category_id == '' or category_id is None:
-            product.category = None
-        else:
-            product.category = get_object_or_404(Category, id=category_id)
-            
-        product.save()
-        return JsonResponse({'success': True, 'message': 'تم تحديث التصنيف'})
-    except Exception as e:
-        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء التحديث'}, status=500)
 
 
 

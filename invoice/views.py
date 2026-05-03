@@ -262,6 +262,29 @@ from django.core.exceptions import PermissionDenied
 from django.contrib.auth.decorators import login_required, permission_required
 from django.core.exceptions import PermissionDenied
 
+
+
+
+
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_GET
+
+
+from django.contrib.auth.decorators import login_required
+
+
+from django.contrib.auth.decorators import login_required, permission_required
+
+
+from django.contrib.auth.decorators import login_required, permission_required
+from django.views.decorators.http import require_POST
+
+
+
+from django.contrib.auth.decorators import login_required, permission_required
+from django.views.decorators.http import require_POST, require_GET
+
+
 # ==================== إعدادات التسجيل ====================
 logger = logging.getLogger(__name__)
 
@@ -1938,9 +1961,6 @@ def product_bulk_update(request):
 # ===============================================
 
 
-from django.contrib.auth.decorators import login_required, permission_required
-from django.views.decorators.http import require_POST, require_GET
-
 
 #================================================
 #           إدارة تصنيفات المتجر               #
@@ -2319,10 +2339,16 @@ def get_cash_balance(request):
 
 
 
+from django.contrib.auth.decorators import login_required, permission_required
+from django.views.decorators.http import require_GET, require_POST
+from django.views.decorators.csrf import csrf_exempt
 
-
+# =================================================
+#  APIs خاصة بطرق الدفع
+# =================================================
 
 @login_required
+@permission_required('invoice.change_payment_method', raise_exception=True)
 @csrf_exempt
 @require_POST
 def update_payment_method_cash(request, pk):
@@ -2337,13 +2363,14 @@ def update_payment_method_cash(request, pk):
         
         return JsonResponse({'success': True})
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
+        # 🔒 تحسين أمني
+        return JsonResponse({'success': False, 'error': 'حدث خطأ أثناء التحديث'})
 
 
 @login_required
 @require_GET
 def get_payment_method(request, pk):
-    """جلب بيانات طريقة الدفع"""
+    """جلب بيانات طريقة الدفع (يُستدعى من داخل نماذج الفواتير)"""
     try:
         payment_method = get_object_or_404(Payment_method, pk=pk)
         return JsonResponse({
@@ -2352,14 +2379,15 @@ def get_payment_method(request, pk):
             'is_cash': payment_method.is_cash
         })
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=404)
+        return JsonResponse({'error': 'حدث خطأ أثناء جلب البيانات'}, status=404)
 
 
-#================================================
-#             دول مساعدة عامة                  #
-# ===============================================
+# =================================================
+#  أدوات مساعدة عامة (تُستدعى من الواجهة الأمامية)
+# =================================================
 
 @require_GET
+@login_required
 def convert_amount_to_words_api(request):
     """API لتحويل المبلغ إلى كلمات"""
     from num2words import num2words
@@ -2493,13 +2521,14 @@ def convert_amount_to_words_api(request):
         logger.error(f"خطأ في تحويل المبلغ إلى كلمات: {str(e)}", exc_info=True)
         return JsonResponse({
             'success': False,
-            'error': f"حدث خطأ في التحويل: {str(e)}"
+            'error': 'حدث خطأ في التحويل'
         })
 
-#== FOR WHAT ==
+
 @require_GET
+@login_required
 def get_current_amount_in_words(request):
-    """API للحصول على المبلغ الحالي للفاتورة مكتوباً"""
+    """API للحصول على المبلغ الحالي للفاتورة مكتوباً (يُستدعى من الواجهة)"""
     from num2words import num2words
     
     purchase_id = request.GET.get('purchase_id')
@@ -2625,21 +2654,17 @@ def get_current_amount_in_words(request):
         })
     except Exception as e:
         logger.error(f"خطأ في جلب المبلغ المكتوب: {e}")
+        # 🔒 تحسين أمني
         return JsonResponse({
             'success': False,
-            'error': str(e)
+            'error': 'حدث خطأ أثناء جلب البيانات'
         })
-
 
 
 
 #================================================
 #               دوال البحث (APIs)              #
 # ===============================================
-
-
-from django.contrib.auth.decorators import login_required
-from django.views.decorators.http import require_GET
 
 
 # ===============================================
@@ -2994,6 +3019,7 @@ def sale_create(request):
 
 
 #----------------
+
 
 def handle_sale_cash_transaction(sale):
     """دالة مساعدة ولا تحتاج لديكوريتورات"""
@@ -4156,6 +4182,8 @@ class PriceTypeDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteVie
 
 
 
+
+
 @login_required
 def get_product_barcodes(request, product_id):
     """
@@ -4237,9 +4265,8 @@ def get_product_barcodes(request, product_id):
         return JsonResponse({'success': False, 'error': 'المنتج غير موجود'}, status=404)
     except Exception as e:
         logger.error(f"خطأ في جلب باركودات المنتج: {e}")
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
+        # 🔒 تحسين أمني: عدم كشف تفاصيل الخطأ للمستخدم
+        return JsonResponse({'success': False, 'error': 'حدث خطأ أثناء جلب الباركودات'}, status=500)
 
 
 # تقرير 
@@ -4253,7 +4280,7 @@ def get_product_barcodes(request, product_id):
 
 
 
-from django.contrib.auth.decorators import login_required, permission_required
+
 
 # **********************************************************************************
 # ==================== القسم الأول: دوال مساعدة ================================
@@ -4939,9 +4966,6 @@ def email_settings_view(request):
 
 # shooping 
 
-
-from django.contrib.auth.decorators import login_required, permission_required
-from django.views.decorators.http import require_POST
 
 # **********************************************************************************
 # ==================== القسم الأول: واجهة المتجر (للزبون) ====================

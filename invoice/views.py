@@ -245,6 +245,11 @@ from django.contrib.auth.decorators import login_required, permission_required
 
 from django.contrib.auth.decorators import login_required, permission_required
 
+
+
+from django.db import transaction
+from django.db.models import F
+
 # ==================== إعدادات التسجيل ====================
 logger = logging.getLogger(__name__)
 
@@ -5362,8 +5367,6 @@ def checkout_view(request):
 
 
 
-from django.db import transaction
-from django.db.models import F
 
 def place_order_view(request):
     """تأكيد الطلب وإنشاءه في قاعدة البيانات (النسخة المحصنة)"""

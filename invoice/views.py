@@ -2638,6 +2638,19 @@ def get_current_amount_in_words(request):
 # ===============================================
 
 
+from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_GET
+
+
+# ===============================================
+#  واجهات برمجة التطبيقات (APIs) للبحث السريع
+# ملاحمة هامة: لا نضع صلاحيات دقيقة هنا (مثل view_product)
+# لأن هذه الدوال تُستخدم في الإكمال التلقائي (Autocomplete)
+# داخل نماذج إضافة الفواتير. تقييدها سيمنع المستخدم العادي
+# من البحث عن منتج أو مورد أثناء عمله.
+# ===============================================
+
+
 @require_GET
 @login_required
 def search_suppliers(request):
@@ -2680,7 +2693,6 @@ def search_suppliers(request):
     
     # لم نتغير في شيء هنا، الـ JSON يبقى بنفس الشكل
     return JsonResponse({'results': suppliers})
-
 
 
 @require_GET
@@ -2740,6 +2752,7 @@ def search_products(request):
                 products = []
     
     return JsonResponse({'results': products})
+
 
 
 

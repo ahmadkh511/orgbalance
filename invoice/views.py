@@ -243,6 +243,8 @@ from .models import Purch
 
 from django.contrib.auth.decorators import login_required, permission_required
 
+from django.contrib.auth.decorators import login_required, permission_required
+
 # ==================== إعدادات التسجيل ====================
 logger = logging.getLogger(__name__)
 
@@ -2711,7 +2713,9 @@ def search_products(request):
 # ===============================================
 
 
+
 @login_required
+@permission_required('invoice.add_sale', raise_exception=True)
 def sale_create(request):
     """إنشاء فاتورة بيع جديدة مع منطق التحقق المحسّن."""
     
@@ -2916,7 +2920,8 @@ def sale_create(request):
                 messages.error(request, e.messages[0] if hasattr(e, 'messages') and e.messages else str(e))
             except Exception as e:
                 logger.error(f"خطأ في إنشاء فاتورة البيع: {e}", exc_info=True)
-                messages.error(request, f'حدث خطأ غير متوقع: {str(e)}')
+                # 🔒 تحسين أمني: عدم كشف تفاصيل الخطأ للمستخدم
+                messages.error(request, 'حدث خطأ غير متوقع أثناء إنشاء الفاتورة')
         else:
             messages.error(request, 'يرجى تصحيح الأخطاء في النموذج.')
                 
@@ -2943,6 +2948,7 @@ def sale_create(request):
 #----------------
 
 def handle_sale_cash_transaction(sale):
+    """دالة مساعدة ولا تحتاج لديكوريتورات"""
     from .models import CashTransaction
     existing = CashTransaction.objects.filter(sale_invoice=sale, transaction_type='sale_receipt').first()
     is_cash = sale.sale_payment_method and sale.sale_payment_method.is_cash
@@ -2965,10 +2971,15 @@ def handle_sale_cash_transaction(sale):
             existing.delete()
 
 
+
+
 #------------------
 
+from django.contrib.auth.decorators import login_required, permission_required
+from django.core.exceptions import PermissionDenied
 
 @login_required
+@permission_required('invoice.view_sale', raise_exception=True)
 def sale_detail(request, slug):
     """
     عرض تفاصيل فاتورة بيع محددة مع جميع البنود والباركودات المرتبطة
@@ -2985,6 +2996,10 @@ def sale_detail(request, slug):
         ),
         slug=slug
     )
+    
+    # 🔒 إغلاق ثغرة IDOR
+    if sale.created_by and sale.created_by != request.user and not request.user.is_superuser:
+        raise PermissionDenied(_("ليس لديك صلاحية للوصول إلى هذه الفاتورة"))
     
     # جلب جميع بنود الفاتورة مرتبة
     items = sale.saleitem_set.all().order_by('id')
@@ -3027,6 +3042,7 @@ def sale_detail(request, slug):
 
 
 @login_required
+@permission_required('invoice.change_sale', raise_exception=True)
 def sale_edit(request, slug):
     """
     تعديل فاتورة بيع موجودة.
@@ -3034,6 +3050,10 @@ def sale_edit(request, slug):
     باعتبارها "ممتلكة" بالفعل ولا تحتاج لفحص توفر جديد.
     """
     sale = get_object_or_404(Sale, slug=slug)
+    
+    # 🔒 إغلاق ثغرة IDOR
+    if sale.created_by and sale.created_by != request.user and not request.user.is_superuser:
+        raise PermissionDenied(_("ليس لديك صلاحية لتعديل هذه الفاتورة"))
     
     # تعريف FormSet مخصص للتعديل (extra=0 لمنع ظهور صفوف فارغة غير مرغوبة)
     SaleItemEditFormSet = inlineformset_factory(
@@ -3069,7 +3089,7 @@ def sale_edit(request, slug):
                                 barcode_item.delete()
                             
                             # حذف البند (سيتم تحديث المخزون تلقائياً في signal أو delete method إذا كان مدعوماً)
-                            # هنا نستدعي delete لتفعيل المنطق الموجود في модели SaleItem
+                            # هنا نستدعي delete لتفعيل المنطق الموجود في نموذج SaleItem
                             instance.delete()
                     
                     # 3. حفظ البنود الجديدة والمعدلة
@@ -3265,7 +3285,8 @@ def sale_edit(request, slug):
                 messages.error(request, msg)
             except Exception as e:
                 logger.error(f"خطأ في تعديل فاتورة البيع: {e}", exc_info=True)
-                messages.error(request, f'حدث خطأ غير متوقع: {str(e)}')
+                # 🔒 تحسين أمني
+                messages.error(request, 'حدث خطأ غير متوقع أثناء تعديل الفاتورة')
         else:
             messages.error(request, 'يرجى تصحيح الأخطاء في النموذج.')
     
@@ -3289,8 +3310,8 @@ def sale_edit(request, slug):
     return render(request, 'invoice/sale/sale_form_edit.html', context)
 
 
-
 @login_required
+@permission_required('invoice.view_sale', raise_exception=True)
 def sale_list(request):
     """عرض قائمة فواتير البيع"""
     sales = Sale.objects.all().select_related('sale_customer', 'sale_status').prefetch_related('saleitem_set')
@@ -3315,11 +3336,14 @@ def sale_list(request):
 #--seale return---
 
 
-
-
 @login_required
+@permission_required('invoice.add_salereturn', raise_exception=True)
 def sale_return_create(request, sale_slug):
     original_sale = get_object_or_404(Sale, slug=sale_slug)
+    
+    # 🔒 إغلاق ثغرة IDOR
+    if original_sale.created_by and original_sale.created_by != request.user and not request.user.is_superuser:
+        raise PermissionDenied(_("ليس لديك صلاحية لإنشاء مرتجع لهذه الفاتورة"))
     
     # التحقق مما إذا كانت الفاتورة الأصلية مدفوعة نقداً (للعرض فقط)
     is_cash_payment = False
@@ -3478,7 +3502,8 @@ def sale_return_create(request, sale_slug):
                 messages.error(request, str(e))
             except Exception as e:
                 logger.error(f"Error: {e}", exc_info=True)
-                messages.error(request, f"حدث خطأ: {str(e)}")
+                # 🔒 تحسين أمني
+                messages.error(request, 'حدث خطأ غير متوقع أثناء إنشاء المرتجع')
             
     else: # GET
         form = SaleReturnForm(initial={
@@ -3540,6 +3565,7 @@ def sale_return_create(request, sale_slug):
 
 
 @login_required
+@permission_required('invoice.view_salereturn', raise_exception=True)
 def sale_return_detail(request, slug):
     """عرض تفاصيل مرتجع المبيعات"""
     try:
@@ -3551,6 +3577,10 @@ def sale_return_detail(request, slug):
         messages.error(request, 'مرتجع المبيعات غير موجود')
         return redirect('invoice:sale_return_list')
     
+    # 🔒 إغلاق ثغرة IDOR
+    if sale_return.created_by and sale_return.created_by != request.user and not request.user.is_superuser:
+        raise PermissionDenied(_("ليس لديك صلاحية لعرض هذا المرتجع"))
+    
     return render(request, 'invoice/sale_return/sale_return_detail.html', {
         'sale_return': sale_return,
         'original_sale': sale_return.original_sale,
@@ -3558,6 +3588,7 @@ def sale_return_detail(request, slug):
 
 
 @login_required
+@permission_required('invoice.change_salereturn', raise_exception=True)
 def sale_return_update(request, slug):
     """تعديل مرتجع المبيعات"""
     try:
@@ -3565,6 +3596,10 @@ def sale_return_update(request, slug):
     except SaleReturn.DoesNotExist:
         messages.error(request, 'مرتجع المبيعات غير موجود')
         return redirect('invoice:sale_return_list')
+    
+    # 🔒 إغلاق ثغرة IDOR
+    if sale_return.created_by and sale_return.created_by != request.user and not request.user.is_superuser:
+        raise PermissionDenied(_("ليس لديك صلاحية لتعديل هذا المرتجع"))
     
     if request.method == 'POST':
         form = SaleReturnForm(request.POST, request.FILES, instance=sale_return)
@@ -3584,14 +3619,15 @@ def sale_return_update(request, slug):
                     
             except Exception as e:
                 logger.error(f"خطأ في تحديث مرتجع المبيعات: {e}", exc_info=True)
-                messages.error(request, f'حدث خطأ: {str(e)}')
+                # 🔒 تحسين أمني
+                messages.error(request, 'حدث خطأ غير متوقع أثناء تحديث المرتجع')
         else:
             messages.error(request, 'يرجى تصحيح الأخطاء في النموذج')
     else:
         form = SaleReturnForm(instance=sale_return)
         formset = SaleReturnItemFormSet(prefix='items', instance=sale_return)
     
-    return render(request, 'invoice/sale/sale_return_form.html', {
+    return render(request, 'invoice/sale_return/sale_return_form.html', {
         'form': form,
         'formset': formset,
         'original_sale': sale_return.original_sale,
@@ -3601,6 +3637,7 @@ def sale_return_update(request, slug):
 
 
 @login_required
+@permission_required('invoice.delete_salereturn', raise_exception=True)
 def sale_return_delete(request, slug):
     """حذف مرتجع المبيعات"""
     try:
@@ -3608,6 +3645,10 @@ def sale_return_delete(request, slug):
     except SaleReturn.DoesNotExist:
         messages.error(request, 'مرتجع المبيعات غير موجود')
         return redirect('invoice:sale_return_list')
+    
+    # 🔒 إغلاق ثغرة IDOR
+    if sale_return.created_by and sale_return.created_by != request.user and not request.user.is_superuser:
+        raise PermissionDenied(_("ليس لديك صلاحية لحذف هذا المرتجع"))
     
     if request.method == 'POST':
         try:
@@ -3630,7 +3671,8 @@ def sale_return_delete(request, slug):
                 
         except Exception as e:
             logger.error(f"خطأ في حذف مرتجع المبيعات: {e}", exc_info=True)
-            messages.error(request, f'حدث خطأ أثناء الحذف: {str(e)}')
+            # 🔒 تحسين أمني
+            messages.error(request, 'حدث خطأ أثناء حذف المرتجع')
             
         return redirect('invoice:sale_return_list')
     
@@ -3640,6 +3682,7 @@ def sale_return_delete(request, slug):
 
 
 @login_required
+@permission_required('invoice.view_salereturn', raise_exception=True)
 def sale_return_list(request):
     """عرض قائمة مرتجعات المبيعات"""
     sale_returns = SaleReturn.objects.select_related(
@@ -3668,7 +3711,7 @@ def sale_return_list(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
-    return render(request, 'invoice/sale/sale_return_list.html', {
+    return render(request, 'invoice/sale_return_list.html', {
         'page_obj': page_obj,
         'search_query': search_query,
         'start_date': start_date,
@@ -3678,6 +3721,7 @@ def sale_return_list(request):
 
 
 @login_required
+@permission_required('invoice.view_sale', raise_exception=True)
 def get_sale_items_for_return(request, sale_id):
     """API لجلب بنود الفاتورة الأصلية مع إمكانية تحديد الكميات القابلة للإرجاع"""
     try:
@@ -3731,10 +3775,12 @@ def get_sale_items_for_return(request, sale_id):
         return JsonResponse({'success': False, 'error': 'الفاتورة غير موجودة'}, status=404)
     except Exception as e:
         logger.error(f"خطأ في جلب بنود الفاتورة للإرجاع: {e}", exc_info=True)
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+        # 🔒 تحسين أمني للـ API
+        return JsonResponse({'success': False, 'error': 'حدث خطأ أثناء جلب البيانات'}, status=500)
 
 
 @login_required
+@permission_required('invoice.add_salereturn', raise_exception=True)
 def check_barcode_for_return(request, product_id):
     """API للتحقق من صحة الباركود للإرجاع"""
     try:
@@ -3798,10 +3844,8 @@ def check_barcode_for_return(request, product_id):
         return JsonResponse({'success': False, 'error': 'المنتج غير موجود'}, status=404)
     except Exception as e:
         logger.error(f"خطأ في التحقق من الباركود للإرجاع: {e}", exc_info=True)
-        return JsonResponse({'success': False, 'error': str(e)}, status=500)
-
-
-
+        # 🔒 تحسين أمني للـ API
+        return JsonResponse({'success': False, 'error': 'حدث خطأ أثناء التحقق من الباركود'}, status=500)
 
 
 
@@ -3813,221 +3857,252 @@ def check_barcode_for_return(request, product_id):
 # ===============================================
 
 
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+
 # ================ عملات ================
-class CurrencyListView(LoginRequiredMixin, ListView):
+class CurrencyListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     model = Currency
     template_name = 'invoice/Currency/currency_list.html'
     context_object_name = 'currencies'
     paginate_by = 10
+    permission_required = 'invoice.view_currency'
 
     def get_queryset(self):
         return Currency.objects.all().order_by('code')
 
-class CurrencyDetailView(LoginRequiredMixin, DetailView):
+class CurrencyDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     model = Currency
     template_name = 'invoice/Currency/currency_detail.html'
     context_object_name = 'currency'
+    permission_required = 'invoice.view_currency'
 
-class CurrencyCreateView(LoginRequiredMixin, CreateView):
+class CurrencyCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = Currency
     form_class = CurrencyForm
     template_name = 'invoice/Currency/currency_form.html'
     success_url = reverse_lazy('invoice:currency_list')
+    permission_required = 'invoice.add_currency'
 
     def form_valid(self, form):
         messages.success(self.request, _('تمت إضافة العملة بنجاح'))
         return super().form_valid(form)
 
-class CurrencyUpdateView(LoginRequiredMixin, UpdateView):
+class CurrencyUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     model = Currency
     form_class = CurrencyForm
     template_name = 'invoice/Currency/currency_form.html'
     success_url = reverse_lazy('invoice:currency_list')
+    permission_required = 'invoice.change_currency'
 
     def form_valid(self, form):
         messages.success(self.request, _('تم تحديث العملة بنجاح'))
         return super().form_valid(form)
 
-class CurrencyDeleteView(LoginRequiredMixin, DeleteView):
+class CurrencyDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
     model = Currency
     template_name = 'invoice/Currency/currency_confirm_delete.html'
     success_url = reverse_lazy('invoice:currency_list')
+    permission_required = 'invoice.delete_currency'
 
     def delete(self, request, *args, **kwargs):
         messages.success(self.request, _('تم حذف العملة بنجاح'))
         return super().delete(request, *args, **kwargs)
 
+
 # ================ طرق الدفع ================
-class PaymentMethodListView(LoginRequiredMixin, ListView):
+class PaymentMethodListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     model = Payment_method
     template_name = 'invoice/Payment_method/payment_method_list.html'
     context_object_name = 'payment_methods'
     paginate_by = 10
+    permission_required = 'invoice.view_payment_method'
 
     def get_queryset(self):
         return Payment_method.objects.all().order_by('name')
 
-class PaymentMethodDetailView(LoginRequiredMixin, DetailView):
+class PaymentMethodDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     model = Payment_method
     template_name = 'invoice/Payment_method/payment_method_detail.html'
     context_object_name = 'payment_method'
+    permission_required = 'invoice.view_payment_method'
 
-class PaymentMethodCreateView(LoginRequiredMixin, CreateView):
+class PaymentMethodCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = Payment_method
     form_class = PaymentMethodForm
     template_name = 'invoice/Payment_method/payment_method_form.html'
     success_url = reverse_lazy('invoice:payment_method_list')
+    permission_required = 'invoice.add_payment_method'
 
     def form_valid(self, form):
         messages.success(self.request, _('تمت إضافة طريقة الدفع بنجاح'))
         return super().form_valid(form)
 
-class PaymentMethodUpdateView(LoginRequiredMixin, UpdateView):
+class PaymentMethodUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     model = Payment_method
     form_class = PaymentMethodForm
     template_name = 'invoice/Payment_method/payment_method_form.html'
     success_url = reverse_lazy('invoice:payment_method_list')
+    permission_required = 'invoice.change_payment_method'
 
     def form_valid(self, form):
         messages.success(self.request, _('تم تحديث طريقة الدفع بنجاح'))
         return super().form_valid(form)
 
-class PaymentMethodDeleteView(LoginRequiredMixin, DeleteView):
+class PaymentMethodDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
     model = Payment_method
     template_name = 'invoice/Payment_method/payment_method_confirm_delete.html'
     success_url = reverse_lazy('invoice:payment_method_list')
+    permission_required = 'invoice.delete_payment_method'
 
     def delete(self, request, *args, **kwargs):
         messages.success(self.request, _('تم حذف طريقة الدفع بنجاح'))
         return super().delete(request, *args, **kwargs)
 
+
 # ================ شركات الشحن ================
-class ShippingCompanyListView(LoginRequiredMixin, ListView):
+class ShippingCompanyListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     model = Shipping_com_m
     template_name = 'invoice/Shipping_com_m/shipping_company_list.html'
     context_object_name = 'shipping_companies'
     paginate_by = 10
+    permission_required = 'invoice.view_shipping_com_m'
 
     def get_queryset(self):
         return Shipping_com_m.objects.all().order_by('name')
 
-class ShippingCompanyDetailView(LoginRequiredMixin, DetailView):
+class ShippingCompanyDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     model = Shipping_com_m
     template_name = 'invoice/Shipping_com_m/shipping_company_detail.html'
     context_object_name = 'shipping_company'
+    permission_required = 'invoice.view_shipping_com_m'
 
-class ShippingCompanyCreateView(LoginRequiredMixin, CreateView):
+class ShippingCompanyCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = Shipping_com_m
     form_class = ShippingCompanyForm
     template_name = 'invoice/Shipping_com_m/shipping_company_form.html'
     success_url = reverse_lazy('invoice:shipping_company_list')
+    permission_required = 'invoice.add_shipping_com_m'
 
     def form_valid(self, form):
         messages.success(self.request, _('تمت إضافة شركة الشحن بنجاح'))
         return super().form_valid(form)
 
-class ShippingCompanyUpdateView(LoginRequiredMixin, UpdateView):
+class ShippingCompanyUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     model = Shipping_com_m
     form_class = ShippingCompanyForm
     template_name = 'invoice/Shipping_com_m/shipping_company_form.html'
     success_url = reverse_lazy('invoice:shipping_company_list')
+    permission_required = 'invoice.change_shipping_com_m'
 
     def form_valid(self, form):
         messages.success(self.request, _('تم تحديث شركة الشحن بنجاح'))
         return super().form_valid(form)
 
-class ShippingCompanyDeleteView(LoginRequiredMixin, DeleteView):
+class ShippingCompanyDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
     model = Shipping_com_m
     template_name = 'invoice/Shipping_com_m/shipping_company_confirm_delete.html'
     success_url = reverse_lazy('invoice:shipping_company_list')
+    permission_required = 'invoice.delete_shipping_com_m'
 
     def delete(self, request, *args, **kwargs):
         messages.success(self.request, _('تم حذف شركة الشحن بنجاح'))
         return super().delete(request, *args, **kwargs)
 
+
 # ================ الحالات ================
-class StatusListView(LoginRequiredMixin, ListView):
+class StatusListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     model = Status
     template_name = 'invoice/Status/status_list.html'
     context_object_name = 'statuses'
     paginate_by = 10
+    permission_required = 'invoice.view_status'
 
     def get_queryset(self):
         return Status.objects.all().order_by('name')
 
-class StatusDetailView(LoginRequiredMixin, DetailView):
+class StatusDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     model = Status
     template_name = 'invoice/Status/status_detail.html'
     context_object_name = 'status'
+    permission_required = 'invoice.view_status'
 
-class StatusCreateView(LoginRequiredMixin, CreateView):
+class StatusCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = Status
     form_class = StatusForm
     template_name = 'invoice/Status/status_form.html'
     success_url = reverse_lazy('invoice:status_list')
+    permission_required = 'invoice.add_status'
 
     def form_valid(self, form):
         messages.success(self.request, _('تمت إضافة الحالة بنجاح'))
         return super().form_valid(form)
 
-class StatusUpdateView(LoginRequiredMixin, UpdateView):
+class StatusUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     model = Status
     form_class = StatusForm
     template_name = 'invoice/Status/status_form.html'
     success_url = reverse_lazy('invoice:status_list')
+    permission_required = 'invoice.change_status'
 
     def form_valid(self, form):
         messages.success(self.request, _('تم تحديث الحالة بنجاح'))
         return super().form_valid(form)
 
-class StatusDeleteView(LoginRequiredMixin, DeleteView):
+class StatusDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
     model = Status
     template_name = 'invoice/Status/status_confirm_delete.html'
     success_url = reverse_lazy('invoice:status_list')
+    permission_required = 'invoice.delete_status'
 
     def delete(self, request, *args, **kwargs):
         messages.success(self.request, _('تم حذف الحالة بنجاح'))
         return super().delete(request, *args, **kwargs)
 
+
 # ================ أنواع الأسعار ================
-class PriceTypeListView(LoginRequiredMixin, ListView):
+class PriceTypeListView(LoginRequiredMixin, PermissionRequiredMixin, ListView):
     model = PriceType
     template_name = 'invoice/PriceType/price_type_list.html'
     context_object_name = 'price_types'
     paginate_by = 10
+    permission_required = 'invoice.view_pricetype'
 
     def get_queryset(self):
         return PriceType.objects.all().order_by('name')
 
-class PriceTypeDetailView(LoginRequiredMixin, DetailView):
+class PriceTypeDetailView(LoginRequiredMixin, PermissionRequiredMixin, DetailView):
     model = PriceType
     template_name = 'invoice/PriceType/price_type_detail.html'
     context_object_name = 'price_type'
+    permission_required = 'invoice.view_pricetype'
 
-class PriceTypeCreateView(LoginRequiredMixin, CreateView):
+class PriceTypeCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = PriceType
     form_class = PriceTypeForm
     template_name = 'invoice/PriceType/price_type_form.html'
     success_url = reverse_lazy('invoice:price_type_list')
+    permission_required = 'invoice.add_pricetype'
 
     def form_valid(self, form):
         messages.success(self.request, _('تمت إضافة نوع السعر بنجاح'))
         return super().form_valid(form)
 
-class PriceTypeUpdateView(LoginRequiredMixin, UpdateView):
+class PriceTypeUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     model = PriceType
     form_class = PriceTypeForm
     template_name = 'invoice/PriceType/price_type_form.html'
     success_url = reverse_lazy('invoice:price_type_list')
+    permission_required = 'invoice.change_pricetype'
 
     def form_valid(self, form):
         messages.success(self.request, _('تم تحديث نوع السعر بنجاح'))
         return super().form_valid(form)
 
-class PriceTypeDeleteView(LoginRequiredMixin, DeleteView):
+class PriceTypeDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
     model = PriceType
     template_name = 'invoice/PriceType/price_type_confirm_delete.html'
     success_url = reverse_lazy('invoice:price_type_list')
+    permission_required = 'invoice.delete_pricetype'
 
     def delete(self, request, *args, **kwargs):
         messages.success(self.request, _('تم حذف نوع السعر بنجاح'))

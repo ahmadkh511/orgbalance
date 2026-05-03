@@ -1937,7 +1937,18 @@ def product_bulk_update(request):
 #  API: إدارة التصنيفات (الفئات)
 # ===============================================
 
+
+from django.contrib.auth.decorators import login_required, permission_required
+from django.views.decorators.http import require_POST, require_GET
+
+
+#================================================
+#           إدارة تصنيفات المتجر               #
+# ===============================================
+
+
 @login_required
+@permission_required('invoice.view_category', raise_exception=True)
 def manage_categories(request):
     """صفحة إدارة تصنيفات المتجر"""
     categories = Category.objects.all().select_related('pricing_tier').order_by('display_order')
@@ -1950,6 +1961,7 @@ def manage_categories(request):
 
 
 @login_required
+@permission_required('invoice.add_category', raise_exception=True)
 @require_POST
 def api_add_category(request):
     """إنشاء تصنيف جديد"""
@@ -1966,10 +1978,11 @@ def api_add_category(request):
         )
         return JsonResponse({'success': True, 'message': 'تم إنشاء التصنيف'})
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء إنشاء التصنيف'}, status=500)
 
 
 @login_required
+@permission_required('invoice.change_category', raise_exception=True)
 @require_POST
 def api_update_category(request, cat_id):
     """تحديث بيانات التصنيف"""
@@ -1982,10 +1995,11 @@ def api_update_category(request, cat_id):
         category.save()
         return JsonResponse({'success': True, 'message': 'تم التحديث'})
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء تحديث التصنيف'}, status=500)
 
 
 @login_required
+@permission_required('invoice.delete_category', raise_exception=True)
 @require_POST
 def api_delete_category(request, cat_id):
     """حذف تصنيف"""
@@ -1993,11 +2007,12 @@ def api_delete_category(request, cat_id):
         get_object_or_404(Category, id=cat_id).delete()
         return JsonResponse({'success': True, 'message': 'تم الحذف'})
     except Exception as e:
-        return JsonResponse({'success': False, 'message': str(e)}, status=500)
+        return JsonResponse({'success': False, 'message': 'حدث خطأ أثناء حذف التصنيف'}, status=500)
 
 
 
 @login_required
+@permission_required('invoice.view_product', raise_exception=True)
 def get_product_details(request, product_id):
     """الحصول على تفاصيل المنتج"""
     try:
@@ -2021,6 +2036,7 @@ def get_product_details(request, product_id):
 
 
 @login_required
+@permission_required('invoice.add_barcode', raise_exception=True)
 def barcode_create(request, product_slug):
     """إضافة باركود لمنتج"""
     product = get_object_or_404(Product, slug=product_slug)
@@ -2042,7 +2058,7 @@ def barcode_create(request, product_slug):
             except IntegrityError:
                 messages.error(request, _('هذا الباركود موجود مسبقاً'))
             except Exception as e:
-                messages.error(request, f'حدث خطأ أثناء إضافة الباركود: {str(e)}')
+                messages.error(request, _('حدث خطأ أثناء إضافة الباركود، يرجى المحاولة مرة أخرى.'))
         else:
             messages.error(request, _('بيانات غير صحيحة. يرجى التصحيح والمحاولة مرة أخرى.'))
     else:
@@ -2056,6 +2072,7 @@ def barcode_create(request, product_slug):
 
 
 @login_required
+@permission_required('invoice.view_barcode', raise_exception=True)
 def barcode_manage(request, product_slug):
     """إدارة باركودات منتج"""
     product = get_object_or_404(Product, slug=product_slug)
@@ -2069,6 +2086,7 @@ def barcode_manage(request, product_slug):
 
 
 @login_required
+@permission_required('invoice.delete_barcode', raise_exception=True)
 def barcode_delete(request, barcode_id):
     """حذف باركود"""
     barcode = get_object_or_404(Barcode, id=barcode_id)
@@ -2079,7 +2097,7 @@ def barcode_delete(request, barcode_id):
             barcode.delete()
             messages.success(request, _('تم حذف الباركود بنجاح'))
         except Exception as e:
-            messages.error(request, f'حدث خطأ أثناء حذف الباركود: {str(e)}')
+            messages.error(request, _('حدث خطأ أثناء حذف الباركود، يرجى المحاولة مرة أخرى.'))
     
     return redirect('invoice:product_detail', slug=product_slug)
 
@@ -2087,6 +2105,7 @@ def barcode_delete(request, barcode_id):
 #--------------
 
 @login_required
+@permission_required('invoice.view_barcode', raise_exception=True)
 def api_barcode_search(request, barcode):
     """API للبحث بالباركود"""
     try:
@@ -2105,11 +2124,10 @@ def api_barcode_search(request, barcode):
 
 
 
-
-
 # ================ إدارة الصندوق ================
 
 @login_required
+@permission_required('invoice.view_cashtransaction', raise_exception=True)
 def cash_dashboard(request):
     """عرض لوحة تحكم الصندوق"""
     total_in = CashTransaction.objects.aggregate(total=Sum('amount_in'))['total'] or Decimal('0.00')
@@ -2139,6 +2157,7 @@ def cash_dashboard(request):
 
 
 @login_required
+@permission_required('invoice.view_cashtransaction', raise_exception=True)
 def cash_transaction_list(request):
     """عرض قائمة حركات الصندوق"""
     
@@ -2240,6 +2259,7 @@ def cash_transaction_list(request):
 
 
 @login_required
+@permission_required('invoice.add_cashtransaction', raise_exception=True)
 def cash_transaction_create(request):
     """إنشاء حركة صندوق جديدة"""
     total_in = CashTransaction.objects.aggregate(total=Sum('amount_in'))['total'] or Decimal('0.00')
@@ -2272,6 +2292,7 @@ def cash_transaction_create(request):
 
 
 @login_required
+@permission_required('invoice.view_cashtransaction', raise_exception=True)
 def cash_transaction_detail(request, pk):
     """عرض تفاصيل حركة صندوق"""
     transaction = get_object_or_404(CashTransaction, pk=pk)
@@ -2286,6 +2307,7 @@ def cash_transaction_detail(request, pk):
 
 
 @login_required
+@permission_required('invoice.view_cashtransaction', raise_exception=True)
 @require_GET
 def get_cash_balance(request):
     """جلب رصيد الصندوق الحالي"""
@@ -2293,7 +2315,9 @@ def get_cash_balance(request):
         balance = CashTransaction.get_cash_balance()
         return JsonResponse({'balance': str(balance)})
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        return JsonResponse({'error': 'حدث خطأ أثناء جلب رصيد الصندوق'}, status=500)
+
+
 
 
 
